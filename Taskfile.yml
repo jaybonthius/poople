@@ -1,0 +1,138 @@
+version: '3'
+
+dotenv: ['.dev/worktree.env', '.env']
+
+tasks:
+  worktree:setup:
+    desc: Prepare local tools, dependencies and a stable development address
+    cmds:
+      - task: setup:dev
+      - go run ./cmd/worktree
+
+  setup:dev:
+    desc: Install pinned development tools into .tools/bin
+    cmds:
+      - mkdir -p .tools/bin
+      - GOBIN="$PWD/.tools/bin" go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+      - GOBIN="$PWD/.tools/bin" go install github.com/delaneyj/toolbelt/sqlc-gen-zombiezen@f2de71010119456b59fc7d7e87fabda809862ace
+      - GOBIN="$PWD/.tools/bin" go install github.com/a-h/templ/cmd/templ@v0.3.1020
+      - GOBIN="$PWD/.tools/bin" go install github.com/air-verse/air@v1.65.3
+      - go mod download
+
+  sqlc:
+    desc: Generate runtime SQL helpers (only store/zz is replaced)
+    cmds:
+      - .tools/bin/sqlc generate
+
+  templ:
+    desc: Generate web templates
+    cmds:
+      - .tools/bin/templ generate -path web
+
+  bundle:
+    desc: Bundle CSS and TypeScript without development source maps
+    cmds:
+      - go run ./cmd/web/bundle
+
+  build:
+    desc: Generate and build the CGO-free application
+    cmds:
+      - task: sqlc
+      - task: templ
+      - task: bundle
+      - mkdir -p bin
+      - CGO_ENABLED=0 go build -trimpath -o bin/poople ./cmd/web
+
+  live:templ:
+    cmds:
+      - .tools/bin/templ generate -watch -path web
+
+  live:bundle:
+    env:
+      LISTEN: '{{.LISTEN | default "127.0.0.1:8080"}}'
+    cmds:
+      - go run ./cmd/web/bundle -live -listen "$LISTEN"
+
+  live:server:
+    env:
+      DATA_DIR: '{{.DATA_DIR}}'
+      LISTEN: '{{.LISTEN | default "127.0.0.1:8080"}}'
+    requires:
+      vars: [DATA_DIR]
+    cmds:
+      - mkdir -p .live
+      - |
+        .tools/bin/air \
+          -tmp_dir ".live" \
+          -build.bin ".live/poople" \
+          -build.cmd "CGO_ENABLED=0 go build -tags=dev -o .live/poople ./cmd/web" \
+          -build.full_bin 'exec .live/poople --data-dir "$DATA_DIR" --listen "$LISTEN"' \
+          -build.include_ext "go" \
+          -build.exclude_dir ".git,.tools,.task,.live,bin,data,artifacts" \
+          -build.stop_on_error "true" \
+          -build.send_interrupt "true" \
+          -build.kill_delay "45s" \
+          -misc.clean_on_exit "false"
+
+  live:watch:
+    internal: true
+    deps:
+      - live:templ
+      - live:bundle
+      - live:server
+
+  live:
+    desc: Watch templates, assets and Go (requires explicit DATA_DIR)
+    requires:
+      vars: [DATA_DIR]
+    preconditions:
+      - sh: test -n {{.DATA_DIR | trim | shellQuote}}
+        msg: DATA_DIR must be an explicit data directory
+    cmds:
+      - go run ./cmd/worktree --check-listen {{.LISTEN | default "127.0.0.1:8080" | shellQuote}}
+      - task: sqlc
+      - task: templ
+      - task: bundle
+      - task: live:watch
+
+  zap:css:
+    desc: Remove generated CSS and JavaScript bundles
+    cmds:
+      - find web \( -path '*/static/styles/*' -o -path '*/static/web-components/*' \) -type f -delete
+
+  zap:sqlc:
+    desc: Remove generated sqlc code
+    cmds:
+      - rm -rf store/zz
+
+  zap:templ:
+    desc: Remove generated templ files
+    cmds:
+      - find web -name '*_templ.go' -type f -delete
+
+  zap:
+    desc: Remove all generated code; task build regenerates it
+    cmds:
+      - task: zap:css
+      - task: zap:sqlc
+      - task: zap:templ
+
+  test:
+    cmds:
+      - go test -parallel=4 -count=1 ./...
+
+  race:
+    cmds:
+      - go test -race -parallel=4 -count=1 ./...
+
+  vet:
+    cmds:
+      - go vet ./...
+
+  check:
+    desc: Generate, build, check formatting, vet and test
+    cmds:
+      - task: build
+      - test -z "$(gofmt -l app cmd ladder lib store web)"
+      - task: vet
+      - task: test

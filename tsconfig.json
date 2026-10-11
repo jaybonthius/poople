@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "paths": {
+      "datastar": ["./.pi/docs/datastar/datastar-rocket-1.0.4.d.ts"]
+    }
+  },
+  "include": ["web/**/*.ts"]
+}

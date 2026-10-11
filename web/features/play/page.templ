@@ -1,0 +1,19 @@
+package play
+
+import "poople/web/core"
+
+// Page is the first load; the stream then replaces <main> with View on every change.
+templ Page(app string) {
+	@core.Shell("Play") {
+		<div data-init="@get('/play/state', {retry:'always', retryMaxCount:Infinity})"></div>
+		@View(app)
+	}
+}
+
+// View renders <main> from SQLite state, for both the first load and the stream.
+templ View(app string) {
+	<main id="main">
+		<h1>Poople</h1>
+		<p>Store ready: { app }</p>
+	</main>
+}
