@@ -207,6 +207,17 @@ func TestDailyNumber(t *testing.T) {
 	}
 }
 
+func TestDailyOpens(t *testing.T) {
+	for n, want := range map[int]string{0: "2025-08-14T08:00:00Z", 423: "2026-10-11T08:00:00Z", 424: "2026-10-12T08:00:00Z"} {
+		if got := DailyOpens(n).UTC().Format(time.RFC3339); got != want {
+			t.Errorf("DailyOpens(%d) = %s, want %s", n, got, want)
+		}
+		if got := DailyNumber(DailyOpens(n).Add(time.Second)); got != n {
+			t.Errorf("DailyNumber just after DailyOpens(%d) = %d", n, got)
+		}
+	}
+}
+
 func TestDailyStart(t *testing.T) {
 	d := loadData(t)
 	size := len(d.Calendar())

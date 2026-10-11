@@ -7,6 +7,7 @@ import (
 	"poople/app"
 	"poople/ladder"
 	"poople/store"
+	"poople/store/zz"
 
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
@@ -102,5 +103,54 @@ func TestLoadWordsAddsChangedDataAsNewVersion(t *testing.T) {
 	}
 	if got := count(t, db, "SELECT count(*) FROM calendar_entries WHERE list_id = ?", second); got != 1 {
 		t.Fatalf("second calendar entries = %d", got)
+	}
+}
+
+func TestLoadWordsReactivatesRevertedData(t *testing.T) {
+	t.Parallel()
+	backend, err := app.Open(context.Background(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { backend.Close() })
+	db := backend.Database()
+	csw, err := ladder.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture, err := ladder.Parse([]byte("pads\npals\npods\npoop\npoos\n"), []byte("pals\n"), []byte("pals\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := func() int64 {
+		var id int64
+		if err := db.Read(t.Context(), func(conn *sqlite.Conn) (err error) {
+			id, err = zz.OnceCurrentWordList(conn)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	// A -> B -> A -> B, each step within the same millisecond or not.
+	a, err := app.LoadWords(t.Context(), db, csw)
+	if err != nil || current() != a {
+		t.Fatalf("A = %d, %v; current %d", a, err, current())
+	}
+	b, err := app.LoadWords(t.Context(), db, fixture)
+	if err != nil || b == a || current() != b {
+		t.Fatalf("B = %d, %v; current %d", b, err, current())
+	}
+	for _, step := range []struct {
+		data *ladder.Data
+		want int64
+	}{{csw, a}, {fixture, b}, {csw, a}} {
+		got, err := app.LoadWords(t.Context(), db, step.data)
+		if err != nil || got != step.want || current() != step.want {
+			t.Fatalf("reverting to %d = %d, %v; current %d", step.want, got, err, current())
+		}
+	}
+	if got := count(t, db, "SELECT count(*) FROM word_lists"); got != 2 {
+		t.Fatalf("versions = %d, want reverted data reused", got)
 	}
 }

@@ -259,6 +259,12 @@ func DailyNumber(t time.Time) int {
 	return int(t.Sub(dailyEpoch) / (24 * time.Hour))
 }
 
+// DailyOpens returns when daily puzzle n opens, 08:00 UTC; puzzle n+1 opens
+// 24 hours later.
+func DailyOpens(n int) time.Time {
+	return dailyEpoch.Add(time.Duration(n) * 24 * time.Hour)
+}
+
 // DailyStart returns the start word of daily puzzle n; the calendar wraps.
 func (d *Data) DailyStart(n int) string {
 	size := len(d.calendar)
