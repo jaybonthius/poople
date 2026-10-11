@@ -1,0 +1,43 @@
+/* Account page: picture, password and log out. */
+
+@layer feature {
+  .avatar--empty {
+    display: grid;
+    place-items: center;
+    color: var(--ink-muted);
+  }
+
+  .account-avatar {
+    inline-size: 5rem;
+    block-size: 5rem;
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--line-strong);
+  }
+
+  .account-avatar.avatar--empty .icon {
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+  }
+
+  .avatar-picker .avatar--empty .icon {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+  }
+
+  .account-section-title {
+    font-size: var(--text-lg);
+  }
+
+  .field-notice {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .field-notice:empty {
+    display: none;
+  }
+
+  .account-logout {
+    display: grid;
+    gap: var(--space-2);
+  }
+}

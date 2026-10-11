@@ -61,6 +61,7 @@ func (s *Service) SetAvatar(ctx context.Context, accountID int64, upload io.Read
 		}
 		return "", fmt.Errorf("store picture: %w", err)
 	}
+	s.notifyAccounts()
 	return hash, nil
 }
 
@@ -112,6 +113,7 @@ func (s *Service) RemoveAvatar(ctx context.Context, accountID int64) error {
 		}
 		return fmt.Errorf("remove picture: %w", err)
 	}
+	s.notifyAccounts()
 	return nil
 }
 

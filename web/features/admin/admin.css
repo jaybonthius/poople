@@ -1,0 +1,115 @@
+/* Admin user list. */
+
+@layer feature {
+  .page-heading {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .reset-notice {
+    color: var(--ink-muted);
+    font-weight: 600;
+  }
+
+  .reset-link {
+    justify-items: start;
+  }
+
+  .reset-link .field {
+    justify-self: stretch;
+  }
+
+  .reset-title {
+    font-size: var(--text-lg);
+  }
+
+  .reset-link input[type='text'] {
+    font-size: var(--text-sm);
+  }
+
+  .user-list {
+    display: grid;
+    border-block-start: var(--hairline) solid var(--line-strong);
+  }
+
+  .user {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding-block: var(--space-3);
+    border-block-end: var(--hairline) solid var(--line);
+  }
+
+  .user > .avatar {
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+  }
+
+  .avatar--empty {
+    display: grid;
+    place-items: center;
+    color: var(--ink-muted);
+  }
+
+  .user-about {
+    display: grid;
+    gap: 0.125rem;
+    min-inline-size: 0;
+  }
+
+  .user-name {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-meta {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  .role-tag {
+    margin-inline-start: var(--space-2);
+    padding: 0.0625rem var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--wood-soft);
+    color: var(--ink);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    vertical-align: 0.1em;
+  }
+
+  .user-actions {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    gap: var(--space-2);
+  }
+
+  .button--small {
+    min-block-size: 2.5rem;
+    padding-inline: var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .button--danger {
+    color: var(--tomato);
+  }
+
+  .button--danger:hover {
+    background: var(--tomato-soft);
+  }
+
+  @media (width >= 40rem) {
+    .user {
+      grid-template-columns: 2.5rem 1fr auto;
+    }
+
+    .user-actions {
+      grid-column: auto;
+      justify-content: end;
+    }
+  }
+}

@@ -1,0 +1,125 @@
+package account
+
+import (
+	"poople/lib/static"
+	"poople/web/core"
+	"poople/web/services/identity"
+	"strconv"
+)
+
+// Page is the first load; the stream then replaces <main> with View after every account change.
+templ Page(account *identity.Account) {
+	@core.Shell("Account", mastheadViewer(account), static.Path("account", "styles/account.css")) {
+		<div data-init="@get('/account/state', {retry: 'always', retryMaxCount: Infinity})"></div>
+		@View(account)
+	}
+}
+
+// View renders <main> from the account's stored state. Form feedback lives in
+// local signals that survive the morph.
+templ View(account *identity.Account) {
+	<main
+		id="main"
+		class="page"
+		data-signals__ifmissing="{_avatarError: '', _avatarBusy: false, _passwordBusy: false, _currentPassword: '', _newPassword: '', _passwordError: '', _passwordNotice: '', _logoutError: ''}"
+	>
+		<div class="form-panel">
+			<div class="form-intro">
+				@avatar(account, "account-avatar")
+				<h1 class="page-title">{ account.Username }</h1>
+				<p class="page-lede">
+					if account.IsAdmin {
+						Your account. You are the admin.
+					} else {
+						Your account. Your games count towards the leaderboard.
+					}
+				</p>
+			</div>
+			<form class="form-surface" method="post" action="/account/avatar" enctype="multipart/form-data" data-attr:aria-busy="$_avatarBusy ? 'true' : 'false'">
+				<fieldset class="field">
+					<legend>Profile picture</legend>
+					<div class="avatar-picker">
+						@avatar(account, "")
+						<input
+							type="file"
+							name="avatar"
+							accept="image/png,image/jpeg,image/gif,image/webp"
+							aria-label="Choose a picture"
+							aria-describedby="avatar-hint avatar-error"
+							data-indicator:_avatar-busy
+							data-attr:disabled="$_avatarBusy"
+							data-on:change={ uploadAction() }
+						/>
+					</div>
+					<p class="field-hint" id="avatar-hint" data-text="$_avatarBusy ? 'Uploading…' : 'PNG, JPEG, GIF or WebP up to 2 MB. We crop it to a square.'">PNG, JPEG, GIF or WebP up to 2 MB. We crop it to a square.</p>
+					<p class="field-error" id="avatar-error" role="alert" data-show="$_avatarError" style="display: none">
+						<svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+						<span data-text="$_avatarError"></span>
+					</p>
+				</fieldset>
+				if account.AvatarHash != "" {
+					<button
+						type="button"
+						class="button"
+						data-attr:disabled="$_avatarBusy"
+						data-on:click="$_avatarError = ''; @post('/account/avatar/remove', {retry: 'never', payload: {}}).catch(() => { $_avatarError = 'Connection failed. Try again.' })"
+					>Remove picture</button>
+				}
+			</form>
+			<form
+				class="form-surface"
+				method="post"
+				action="/account/password"
+				data-indicator:_password-busy
+				data-attr:aria-busy="$_passwordBusy ? 'true' : 'false'"
+				data-on:submit="if (!$_passwordBusy) { $_passwordError = ''; $_passwordNotice = ''; @post('/account/password', {retry: 'never', payload: {currentPassword: $_currentPassword, newPassword: $_newPassword}}).catch(() => { $_passwordError = 'Connection failed. Try again.' }) }"
+				aria-labelledby="password-title"
+			>
+				<h2 class="account-section-title" id="password-title">Change password</h2>
+				<input type="text" name="username" value={ account.Username } autocomplete="username" hidden/>
+				<div class="field">
+					<label for="current-password">Current password</label>
+					<input type="password" id="current-password" data-bind:_current-password autocomplete="current-password" required maxlength={ strconv.Itoa(identity.PasswordMaxLength) } aria-describedby="password-error"/>
+				</div>
+				<div class="field">
+					<label for="new-password">New password</label>
+					<input type="password" id="new-password" data-bind:_new-password autocomplete="new-password" required minlength={ strconv.Itoa(identity.PasswordMinLength) } maxlength={ strconv.Itoa(identity.PasswordMaxLength) } aria-describedby="new-password-hint password-error"/>
+					<p class="field-hint" id="new-password-hint">At least { strconv.Itoa(identity.PasswordMinLength) } characters. Your other devices will be logged out.</p>
+				</div>
+				<p class="field-error" id="password-error" role="alert" data-show="$_passwordError" style="display: none">
+					<svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+					<span data-text="$_passwordError"></span>
+				</p>
+				<p class="field-notice" role="status" data-text="$_passwordNotice"></p>
+				<button type="submit" class="button button--primary button--block" data-attr:disabled="$_passwordBusy" data-text="$_passwordBusy ? 'Saving…' : 'Save password'">Save password</button>
+			</form>
+			<div class="account-logout">
+				<button type="button" class="button button--block" data-on:click="$_logoutError = ''; @post('/logout', {retry: 'never', payload: {}}).catch(() => { $_logoutError = 'Connection failed. Try again.' })">Log out</button>
+				<p class="field-error" role="alert" data-show="$_logoutError" style="display: none">
+					<svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+					<span data-text="$_logoutError"></span>
+				</p>
+			</div>
+		</div>
+	</main>
+}
+
+templ avatar(account *identity.Account, class string) {
+	if path := account.AvatarPath(); path != "" {
+		<img class={ "avatar", class } src={ path } alt=""/>
+	} else {
+		<span class={ "avatar", "avatar--empty", class }><svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg></span>
+	}
+}
+
+func mastheadViewer(account *identity.Account) *core.Viewer {
+	return &core.Viewer{Username: account.Username, AvatarURL: account.AvatarPath(), IsAdmin: account.IsAdmin}
+}
+
+// uploadAction posts the form as multipart as soon as a picture is chosen,
+// refusing oversized files before sending them, then clears the chooser.
+func uploadAction() string {
+	return "if (!el.files.length || $_avatarBusy) return; $_avatarError = ''; " +
+		"if (el.files[0].size > " + strconv.Itoa(identity.AvatarMaxBytes) + ") { $_avatarError = 'Picture must be 2 MB or smaller.'; el.value = ''; return } " +
+		"@post('/account/avatar', {contentType: 'form', retry: 'never'}).catch(() => { $_avatarError = 'Connection failed. Try again.' }).finally(() => { el.value = '' })"
+}

@@ -10,6 +10,8 @@ import (
 
 	"poople/app"
 	"poople/web/core"
+	"poople/web/features/account"
+	"poople/web/features/admin"
 	"poople/web/features/auth"
 	"poople/web/features/play"
 	"poople/web/services/game"
@@ -20,6 +22,14 @@ import (
 
 // BodyLimit bounds every request body unless a route needs a larger one.
 const BodyLimit = 16 << 10
+
+// bodyLimit raises BodyLimit only for routes that need it.
+func bodyLimit(r *http.Request) int64 {
+	if r.Method == http.MethodPost && r.URL.Path == "/account/avatar" {
+		return account.AvatarBodyLimit
+	}
+	return BodyLimit
+}
 
 // NewApp borrows the backend's storage. secureCookies requires HTTPS for the
 // session cookie. The returned setup token is for the operator only and is empty
@@ -50,7 +60,7 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 	router.Use(http.NewCrossOriginProtection().Handler)
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.Body = http.MaxBytesReader(w, r.Body, BodyLimit)
+			r.Body = http.MaxBytesReader(w, r.Body, bodyLimit(r))
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -64,6 +74,8 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 	})
 	core.Routes(ctx, router)
 	auth.Routes(router, users, setup)
+	account.Routes(ctx, router, users, maxFPS)
+	admin.Routes(ctx, router, users, backend.Players().Changes, maxFPS, identityErrorPage)
 	play.Routes(ctx, router, backend.Database(), maxFPS)
 	return router, token, nil
 }

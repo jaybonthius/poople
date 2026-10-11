@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"poople/lib/errorlog"
+
+	"github.com/starfederation/datastar-go/datastar"
 )
 
 type viewerContextKey struct{}
@@ -84,4 +86,51 @@ func WithPlayer(service *Service, pageErrors ...ErrorPageRenderer) func(http.Han
 func ViewerFrom(ctx context.Context) *Viewer {
 	viewer, _ := ctx.Value(viewerContextKey{}).(*Viewer)
 	return viewer
+}
+
+// RequireAccount admits only signed-in accounts. Others go to /login: page
+// requests by HTTP redirect, Datastar requests (streams and commands) by a
+// Datastar redirect, so a revoked session's open page navigates too.
+func RequireAccount() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if viewer := ViewerFrom(r.Context()); viewer == nil || viewer.Account == nil {
+				toLogin(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAdmin supplements RequireAccount: a signed-in account that is not an
+// admin gets 403, shown as an error page for navigations when pageErrors renders one.
+func RequireAdmin(pageErrors ...ErrorPageRenderer) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			viewer := ViewerFrom(r.Context())
+			if viewer == nil || viewer.Account == nil {
+				toLogin(w, r)
+				return
+			}
+			if !viewer.Account.IsAdmin {
+				if len(pageErrors) == 0 || !pageErrors[0](w, r, http.StatusForbidden) {
+					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				}
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func toLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Datastar-Request") == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	sse := datastar.NewSSE(w, r, func(_ *datastar.ServerSentEventGenerator) { w.Header().Set("Cache-Control", "no-store") })
+	if err := sse.Redirect("/login"); err != nil {
+		errorlog.Request(r, "redirect to log in", err)
+	}
 }

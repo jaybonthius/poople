@@ -111,5 +111,6 @@ func (s *Setup) CreateAdmin(ctx context.Context, token, browserToken, username, 
 	}
 	s.consumed = true
 	s.tokenHash = [32]byte{}
+	s.users.notifyAccounts()
 	return account, issued, nil
 }

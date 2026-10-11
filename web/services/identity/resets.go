@@ -129,5 +129,7 @@ func (s *Service) ResetPassword(ctx context.Context, token, browserToken, passwo
 		}
 		return nil, Session{}, fmt.Errorf("reset password: %w", err)
 	}
+	// Wake views so the account's revoked sessions stop streaming.
+	s.notifyAccounts()
 	return account, session, nil
 }

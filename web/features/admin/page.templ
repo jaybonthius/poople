@@ -1,0 +1,118 @@
+package admin
+
+import (
+	"poople/lib/static"
+	"poople/web/core"
+	"poople/web/services/identity"
+	"strconv"
+)
+
+// Page is the first load; the stream at statePath then replaces <main> with
+// View after every account change and every listed player's game change.
+templ Page(admin *identity.Account, view templ.Component, statePath string) {
+	@core.Shell("Users", &core.Viewer{Username: admin.Username, AvatarURL: admin.AvatarPath(), IsAdmin: true}, static.Path("admin", "styles/admin.css")) {
+		<div data-init={ "@get(" + strconv.Quote(statePath) + ", {retry: 'always', retryMaxCount: Infinity})" }></div>
+		@view
+	}
+}
+
+// View renders <main> from the committed account list, plus a reset link only
+// while the request URL carries it.
+templ View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset, notice string) {
+	<main id="main" class="page" data-signals__ifmissing="{_adminError: ''}">
+		<div class="page-heading">
+			<h1 class="page-title">Users</h1>
+			<p class="page-lede">{ accountCount(len(accounts)) }. Deleting an account keeps its games, without a name.</p>
+		</div>
+		<p class="field-error" role="alert" data-show="$_adminError" style="display: none">
+			<svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+			<span data-text="$_adminError"></span>
+		</p>
+		if notice != "" {
+			<p class="reset-notice" role="status">{ notice }</p>
+		}
+		if issued != nil {
+			<section class="form-surface reset-link" aria-labelledby="reset-title">
+				<h2 class="reset-title" id="reset-title">Reset link for { issued.Username }</h2>
+				<div class="field">
+					<label for="reset-url">Copy it and send it privately</label>
+					<input
+						id="reset-url"
+						type="text"
+						readonly
+						value={ issued.Path }
+						aria-describedby="reset-hint"
+						data-ignore-morph
+						data-init="el.value = new URL(el.value, window.location.origin).href"
+						data-on:click="el.select()"
+					/>
+					<p class="field-hint" id="reset-hint">Works once, for 24 hours. It can't be shown again after you leave this page.</p>
+				</div>
+				<a class="button" href="/admin/users">Done</a>
+			</section>
+		}
+		<ul class="user-list" role="list">
+			for _, account := range accounts {
+				<li class="user">
+					@avatar(account.Account)
+					<div class="user-about">
+						<p class="user-name">
+							{ account.Username }
+							if account.IsAdmin {
+								<span class="role-tag">Admin</span>
+							}
+							if account.ID == adminID {
+								<span class="you-tag">You</span>
+							}
+						</p>
+						<p class="user-meta">
+							Joined <time datetime={ account.CreatedAt.Format("2006-01-02") }>{ account.CreatedAt.Format("2 Jan 2006") }</time> · { gameCount(account.GamesPlayed) }
+						</p>
+					</div>
+					<div class="user-actions">
+						<form method="post" action={ templ.SafeURL("/admin/users/" + strconv.FormatInt(account.ID, 10) + "/reset") }>
+							<button type="submit" class="button button--small" aria-label={ "Issue a password reset link for " + account.Username }>Reset link</button>
+						</form>
+						if account.AvatarHash != "" {
+							<button type="button" class="button button--small" aria-label={ "Remove " + account.Username + "'s picture" } data-on:click={ commandAction(account.ID, "avatar/remove", "") }>Remove picture</button>
+						}
+						if account.ID != adminID {
+							<button type="button" class="button button--small button--danger" aria-label={ "Delete " + account.Username + "'s account" } data-on:click={ commandAction(account.ID, "delete", "Delete "+account.Username+"'s account? Their games stay, without a name.") }>Delete</button>
+						}
+					</div>
+				</li>
+			}
+		</ul>
+	</main>
+}
+
+templ avatar(account identity.Account) {
+	if path := account.AvatarPath(); path != "" {
+		<img class="avatar" src={ path } alt=""/>
+	} else {
+		<span class="avatar avatar--empty"><svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg></span>
+	}
+}
+
+func accountCount(n int) string {
+	if n == 1 {
+		return "1 account"
+	}
+	return strconv.Itoa(n) + " accounts"
+}
+
+func gameCount(n int64) string {
+	if n == 1 {
+		return "1 game"
+	}
+	return strconv.FormatInt(n, 10) + " games"
+}
+
+// commandAction posts an admin command; a non-empty confirmation asks first.
+func commandAction(accountID int64, command, confirmation string) string {
+	action := "$_adminError = ''; @post('/admin/users/" + strconv.FormatInt(accountID, 10) + "/" + command + "', {retry: 'never', payload: {}}).catch(() => { $_adminError = 'Connection failed. Try again.' })"
+	if confirmation == "" {
+		return action
+	}
+	return "if (confirm(" + strconv.Quote(confirmation) + ")) { " + action + " }"
+}

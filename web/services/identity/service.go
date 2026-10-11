@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"poople/store"
@@ -102,6 +103,9 @@ type Service struct {
 	cookies   Cookies
 	merge     MergePlayers
 	dummyHash string
+
+	accountsMu      sync.Mutex
+	accountsChanged chan struct{}
 }
 
 // New prepares identity and deletes expired sessions. merge may be nil until games exist.
@@ -125,7 +129,7 @@ func New(ctx context.Context, database *store.Store, cookies Cookies, merge Merg
 	}); err != nil {
 		return nil, fmt.Errorf("clean expired sessions: %w", err)
 	}
-	return &Service{db: database, cookies: cookies, merge: merge, dummyHash: dummyHash}, nil
+	return &Service{db: database, cookies: cookies, merge: merge, dummyHash: dummyHash, accountsChanged: make(chan struct{})}, nil
 }
 
 // Cookies sets and clears the session cookie with the service's attributes.
@@ -238,6 +242,7 @@ func (s *Service) SignUp(ctx context.Context, browserToken, username, password s
 	}); err != nil {
 		return nil, nil, err
 	}
+	s.notifyAccounts()
 	return account, issued, nil
 }
 
