@@ -1,0 +1,151 @@
+package store
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+
+	"poople/store/zz"
+
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
+)
+
+func testStore(t *testing.T, dir string) *Store {
+	t.Helper()
+	s, err := Open(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return s
+}
+
+func scalar(t *testing.T, s *Store, query string) string {
+	t.Helper()
+	var result string
+	if err := s.Read(t.Context(), func(conn *sqlite.Conn) error {
+		return sqlitex.Execute(conn, query, &sqlitex.ExecOptions{ResultFunc: func(stmt *sqlite.Stmt) error { result = stmt.ColumnText(0); return nil }})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+func TestOpenMigratesAndConfiguresConnections(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join(t.TempDir(), "nested", "data")
+	s := testStore(t, dir)
+	if info, err := os.Stat(dir); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("data directory not created privately: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, Filename)); err != nil {
+		t.Fatal(err)
+	}
+	var app string
+	if err := s.Read(t.Context(), func(conn *sqlite.Conn) (err error) {
+		app, err = zz.OnceGetAppMeta(conn, "app")
+		return err
+	}); err != nil || app != "poople" {
+		t.Fatalf("migrated app_meta=%q, %v", app, err)
+	}
+	if got := scalar(t, s, "SELECT max(version_id) FROM goose_db_version"); got != "1" {
+		t.Fatalf("goose version=%s", got)
+	}
+	if got := scalar(t, s, "PRAGMA journal_mode"); got != "wal" {
+		t.Fatalf("read connection journal_mode=%s", got)
+	}
+	if err := s.db.WriteWithoutTx(t.Context(), checkPragmas); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteCommitsOrRollsBackAndSurvivesReopen(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	s, err := Open(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	insert := func(key string) func(*sqlite.Conn) error {
+		return func(conn *sqlite.Conn) error {
+			return sqlitex.Execute(conn, "INSERT INTO app_meta(key, value) VALUES (?1, 'fixture')", &sqlitex.ExecOptions{Args: []any{key}})
+		}
+	}
+	if err := s.Write(t.Context(), insert("committed")); err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("fixture failure")
+	if err := s.Write(t.Context(), func(conn *sqlite.Conn) error {
+		if err := insert("rolled-back")(conn); err != nil {
+			return err
+		}
+		return failure
+	}); !errors.Is(err, failure) {
+		t.Fatalf("failed write error=%v", err)
+	}
+	if err := s.Write(t.Context(), insert("committed")); err == nil {
+		t.Fatal("duplicate key committed")
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s = testStore(t, dir)
+	if got := scalar(t, s, "SELECT group_concat(key, ',') FROM (SELECT key FROM app_meta ORDER BY key)"); got != "app,committed" {
+		t.Fatalf("keys after reopen=%s", got)
+	}
+	if got := scalar(t, s, "SELECT count(*) FROM goose_db_version WHERE version_id = 1"); got != "1" {
+		t.Fatalf("reopen reapplied migrations: %s", got)
+	}
+}
+
+func TestReadRefusesWrites(t *testing.T) {
+	t.Parallel()
+	s := testStore(t, t.TempDir())
+	for range 2 * runtime.NumCPU() { // reach every pooled read connection
+		if err := s.Read(t.Context(), func(conn *sqlite.Conn) error {
+			return sqlitex.Execute(conn, "INSERT INTO app_meta(key, value) VALUES ('read', 'write')", nil)
+		}); err == nil {
+			t.Fatal("read connection accepted a write")
+		}
+	}
+	if got := scalar(t, s, "SELECT count(*) FROM app_meta WHERE key = 'read'"); got != "0" {
+		t.Fatal("read connection wrote a row")
+	}
+}
+
+func TestOpenRejectsMissingOrAmbiguousDirectoryAndCancellation(t *testing.T) {
+	t.Parallel()
+	if _, err := Open(t.Context(), " "); err == nil {
+		t.Fatal("blank data directory accepted")
+	}
+	for _, name := range []string{"query?mode=memory", "frag#ment", "per%41cent"} {
+		dir := filepath.Join(t.TempDir(), name)
+		if s, err := Open(t.Context(), dir); err == nil {
+			s.Close()
+			t.Fatalf("URI-ambiguous path accepted: %s", name)
+		} else if !strings.Contains(err.Error(), "must not contain") {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			t.Fatal("rejected path was created")
+		}
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	dir := filepath.Join(t.TempDir(), "not-created")
+	if _, err := Open(ctx, dir); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled open=%v", err)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatal("cancelled open created storage")
+	}
+}

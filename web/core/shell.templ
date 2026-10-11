@@ -1,0 +1,30 @@
+package core
+
+import "poople/lib/static"
+
+// Shell is the page document: shared styles, then feature styles, and the
+// pinned Datastar/Rocket runtime that Rocket components import as "datastar".
+templ Shell(title string, styles ...string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"/>
+			<meta name="color-scheme" content="light dark"/>
+			<title>{ title } · Poople</title>
+			<link rel="stylesheet" href={ static.Path("core", "styles/app.css") }/>
+			for _, style := range styles {
+				<link rel="stylesheet" href={ templ.SafeURL(style) }/>
+			}
+			@templ.JSONScript("datastar-imports", map[string]any{"imports": map[string]string{"datastar": static.Path("core", "datastar-rocket-1.0.4.js")}}).WithType("importmap")
+			<script type="module" src={ static.Path("core", "datastar-rocket-1.0.4.js") }></script>
+		</head>
+		<body>
+			if Development {
+				<div data-init="@get('/reload', {retry: 'always', retryMaxCount: Infinity, retryInterval:20, retryMaxWaitMs:200})"></div>
+			}
+			{ children... }
+			<noscript><p>Enable JavaScript to play.</p></noscript>
+		</body>
+	</html>
+}
