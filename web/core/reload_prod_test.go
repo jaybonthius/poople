@@ -29,7 +29,7 @@ func TestProductionExcludesReload(t *testing.T) {
 		}
 	}
 	var body bytes.Buffer
-	if err := core.Shell("fixture").Render(t.Context(), &body); err != nil {
+	if err := core.Shell("fixture", nil).Render(t.Context(), &body); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(body.String(), "/reload") {

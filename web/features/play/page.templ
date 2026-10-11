@@ -4,16 +4,25 @@ import "poople/web/core"
 
 // Page is the first load; the stream then replaces <main> with View on every change.
 templ Page(app string) {
-	@core.Shell("Play") {
+	@core.Shell("Play", nil) {
 		<div data-init="@get('/play/state', {retry:'always', retryMaxCount:Infinity})"></div>
 		@View(app)
 	}
 }
 
 // View renders <main> from SQLite state, for both the first load and the stream.
+// Until the puzzle lanes land it shows a fixed design-preview ladder.
 templ View(app string) {
-	<main id="main">
-		<h1>Poople</h1>
-		<p>Store ready: { app }</p>
+	<main id="main" class="play">
+		<div class="puzzle-heading">
+			<h1 class="puzzle-title">Poople</h1>
+			<p class="puzzle-date">Store ready: { app }</p>
+			<p class="puzzle-hint">Change one letter at a time. Every step must be a word.</p>
+		</div>
+		<div class="board">
+			@core.Ladder("fuse", []string{"fuss", "foss", "fops"}, "poop", core.LadderOptions{Input: true, Fresh: true})
+		</div>
+		@core.Keyboard("/play/guess")
+		@core.Toast("", 0)
 	</main>
 }

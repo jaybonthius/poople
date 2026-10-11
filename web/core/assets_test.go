@@ -25,6 +25,10 @@ func TestEmbeddedAssetsAndShell(t *testing.T) {
 		{"styles/app.css", "text/css", "@layer"},
 		{"datastar-rocket-1.0.4.js", "javascript", "Datastar v1.0.4"},
 		{"datastar-LICENSE.txt", "text/plain", "Copyright © Star Federation"},
+		{"fonts/fredoka-latin.woff2", "font/woff2", "wOF2"},
+		{"fonts/figtree-latin.woff2", "font/woff2", "wOF2"},
+		{"fonts/OFL-Fredoka.txt", "text/plain", "SIL Open Font License"},
+		{"fonts/OFL-Figtree.txt", "text/plain", "SIL Open Font License"},
 	} {
 		path := static.Path("core", asset.path)
 		w := httptest.NewRecorder()
@@ -50,11 +54,17 @@ func TestEmbeddedAssetsAndShell(t *testing.T) {
 	}
 	var body bytes.Buffer
 	featurePath := "/fixture/static/styles/fixture.css"
-	if err := core.Shell("<script>unsafe</script>", featurePath).Render(context.Background(), &body); err != nil {
+	if err := core.Shell("<script>unsafe</script>", nil, featurePath).Render(context.Background(), &body); err != nil {
 		t.Fatal(err)
 	}
 	html := body.String()
 	runtimePath := static.Path("core", "datastar-rocket-1.0.4.js")
+	for _, font := range []string{"fonts/fredoka-latin.woff2", "fonts/figtree-latin.woff2"} {
+		path := static.Path("core", font)
+		if !strings.Contains(html, `rel="preload" href="`+path+`" as="font" type="font/woff2" crossorigin="anonymous"`) || !strings.Contains(html, `url("`+path+`")`) {
+			t.Fatalf("shell does not preload and declare %s at the same URL", path)
+		}
+	}
 	for _, want := range []string{`lang="en"`, `name="viewport"`, `name="color-scheme" content="light dark"`, `type="importmap"`, `"datastar":"` + runtimePath + `"`, `src="` + runtimePath + `"`, "&lt;script&gt;"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("shell missing %q", want)

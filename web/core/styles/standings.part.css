@@ -1,0 +1,219 @@
+/* Standings, ranks, avatars and statistics distribution. */
+
+@layer components {
+  /* Standings: today's leaderboard list inside the finish sheet */
+  .standings {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .standing {
+    display: grid;
+    grid-template-columns: 1.75rem 2rem 1fr auto 3.25rem;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border-radius: var(--radius-control);
+  }
+
+  .standing--you {
+    background: var(--mustard-soft);
+  }
+
+  .standing-name {
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .standing-steps {
+    font-weight: 700;
+  }
+
+  .standing-time {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    text-align: end;
+  }
+
+  .rank {
+    display: grid;
+    place-items: center;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    border-radius: 0.375rem;
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .rank--first {
+    background: var(--mustard);
+    color: #2b2210;
+  }
+
+  .avatar {
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: var(--radius-pill);
+    background: var(--surface-sunken);
+    object-fit: cover;
+  }
+
+  .you-tag {
+    margin-inline-start: var(--space-2);
+    padding: 0.0625rem var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--ink);
+    color: var(--surface);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    vertical-align: 0.1em;
+  }
+
+  .footnote {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* Statistics */
+  .stats-figures {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+    text-align: center;
+  }
+
+  .stats-figure {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--space-1);
+  }
+
+  .stats-figure dt {
+    color: var(--ink-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .stats-figure dd {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .segmented {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    padding: var(--space-1);
+    border-radius: var(--radius-control);
+    background: var(--surface-sunken);
+  }
+
+  .segmented label {
+    display: grid;
+    place-items: center;
+    min-block-size: 2.5rem;
+    padding-inline: var(--space-3);
+    border-radius: calc(var(--radius-control) - 2px);
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .segmented input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .segmented label:has(input:checked) {
+    background: var(--surface);
+    box-shadow: var(--shadow-raise);
+    color: var(--ink);
+  }
+
+  .segmented label:has(input:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .distribution {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .distribution:has(input[value='you']:checked) .dist-panel--everyone,
+  .distribution:has(input[value='everyone']:checked) .dist-panel--you {
+    display: none;
+  }
+
+  .dist-panel {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .dist-list {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .dist-row {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .dist-label {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: end;
+  }
+
+  .dist-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    inline-size: max(var(--share), 2.25rem);
+    min-block-size: 1.625rem;
+    padding-inline: var(--space-2);
+    border-radius: 0.3rem;
+    background: var(--line);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .dist-panel--you .dist-bar--filled {
+    background: var(--series-you);
+    color: var(--on-wood);
+  }
+
+  .dist-panel--everyone .dist-bar--filled {
+    background: var(--series-everyone);
+    color: light-dark(#f4f8fb, #0f1a24);
+  }
+
+  .dist-row--today .dist-label {
+    color: var(--ink);
+  }
+
+  .dist-row--today .dist-bar {
+    outline: var(--rule) solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .dist-axis {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+  }
+}

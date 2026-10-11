@@ -1,0 +1,125 @@
+package core
+
+import "strconv"
+
+// Ladder draws the play board from plain values. start is the start word,
+// rungs are the accepted guesses in order and target is the goal (POOP); words
+// are case-insensitive and drawn in capitals. A tile is matched (wood) when its
+// letter equals the target's in that position. Rungs have stable ids: rung-0
+// for the start word, rung-<n> for guess n.
+//
+// While the last rung is not the target, Ladder draws the input rung (when
+// opts.Input), the dashed gap and the dashed goal rung; once it is, the last
+// rung is drawn as reached. The input rung shows the letters of the $guess
+// signal (up to four lower-case letters, declared here if missing), keeps the
+// browser's copy across morphs and clears $guess when the ladder grows.
+templ Ladder(start string, rungs []string, target string, opts LadderOptions) {
+	<ol class="ladder" aria-label={ "Your ladder from " + upper(start) + " to " + upper(target) } data-signals:guess__ifmissing="''">
+		@wordRung(rungID(0), "rung rung--start", start, target, upper(start)+", start word")
+		for i, word := range rungs {
+			if i == len(rungs)-1 && reached(rungs, target) {
+				@wordRung(rungID(i+1), rungClass("rung rung--reached", opts.Fresh), word, target, upper(word)+", reached")
+			} else {
+				@wordRung(rungID(i+1), rungClass("rung", opts.Fresh && i == len(rungs)-1), word, target, rungLabel(word, target))
+			}
+		}
+		if !reached(rungs, target) {
+			if opts.Input {
+				@inputRung(len(rungs)+1, opts.Rejection)
+			}
+			<li class="rung rung--gap" aria-hidden="true"></li>
+			<li id="rung-goal" class="rung rung--goal">
+				for _, tile := range letterTiles(target, "") {
+					<span class="tile" aria-hidden="true">{ tile.Letter }</span>
+				}
+				<span class="visually-hidden">Goal: { upper(target) }</span>
+			</li>
+		}
+	</ol>
+}
+
+templ wordRung(id, class, word, target, label string) {
+	<li id={ id } class={ class }>
+		for _, tile := range letterTiles(word, target) {
+			<span class={ "tile", templ.KV("tile--match", tile.Match) } aria-hidden="true">{ tile.Letter }</span>
+		}
+		<span class="visually-hidden">{ label }</span>
+	</li>
+}
+
+// inputRung is never morphed while its id stands, so the browser keeps the
+// letters it drew from $guess. A new position clears $guess; a new rejection
+// records the refused word and stays tomato until the player edits it.
+templ inputRung(position, rejection int) {
+	if rejection > 0 {
+		<li
+			id={ inputRungID(position, rejection) }
+			class="rung rung--input rung--rejected"
+			data-ignore-morph
+			data-init="$_rejectedGuess = $guess"
+			data-class:rung--rejected="$guess === $_rejectedGuess"
+		>
+			@inputTiles()
+			<span class="visually-hidden" data-text="'Your next word: ' + ($guess ? $guess.toUpperCase().split('').join(' ') : 'empty') + ($guess === $_rejectedGuess ? ', rejected' : '')">Your next word, rejected</span>
+		</li>
+	} else {
+		<li id={ inputRungID(position, 0) } class="rung rung--input" data-ignore-morph data-init="$guess = ''">
+			@inputTiles()
+			<span class="visually-hidden" data-text="'Your next word: ' + ($guess ? $guess.toUpperCase().split('').join(' ') : 'empty')">Your next word: empty</span>
+		</li>
+	}
+}
+
+templ inputTiles() {
+	for i := range 4 {
+		<span class={ "tile", templ.KV("tile--cursor", i == 0) } aria-hidden="true" data-text={ guessLetterExpr(i) } data-class={ guessTileClassExpr(i) }></span>
+	}
+}
+
+// MiniWord draws a word as small tiles (finish-sheet solutions), matched
+// against target like Ladder, with hidden text naming the word.
+templ MiniWord(word, target string) {
+	<span class="mini-word">
+		for _, tile := range letterTiles(word, target) {
+			<span class={ "mini-tile", templ.KV("tile--match", tile.Match) } aria-hidden="true">{ tile.Letter }</span>
+		}
+	</span>
+	<span class="visually-hidden">{ upper(word) }</span>
+}
+
+// Keyboard is the on-screen keyboard. Letter keys append to $guess (up to four
+// letters), Delete removes the last letter and Enter posts to guessURL once
+// four letters are typed; Datastar sends $guess as the "guess" signal. The
+// physical keyboard does the same unless focus is on another control.
+templ Keyboard(guessURL string) {
+	<section class="keyboard" aria-label="Keyboard" data-signals:guess__ifmissing="''" data-on:keydown__window={ keydownExpr(guessURL) }>
+		<div class="keyboard-row">
+			@letterKeys(keyboardRows[0])
+		</div>
+		<div class="keyboard-row keyboard-row--middle">
+			@letterKeys(keyboardRows[1])
+		</div>
+		<div class="keyboard-row">
+			<button type="button" class="key key--wide key--enter" data-on:click={ submitGuessExpr(guessURL) }>Enter</button>
+			@letterKeys(keyboardRows[2])
+			<button type="button" class="key key--wide" aria-label="Delete letter" data-on:click="$guess = $guess.slice(0, -1)"><svg class="icon" aria-hidden="true"><use href="#i-backspace"></use></svg></button>
+		</div>
+	</section>
+}
+
+templ letterKeys(letters string) {
+	for i := range len(letters) {
+		<button type="button" class="key" data-on:click={ typeLetterExpr(letters[i : i+1]) }>{ letters[i : i+1] }</button>
+	}
+}
+
+// Toast is the polite status region for messages such as "Not in word list".
+// Render it on every view, with an empty message when there is nothing to say;
+// seq keys the message so a repeated message animates in again.
+templ Toast(message string, seq int) {
+	<div class="toast-region" role="status">
+		if message != "" {
+			<p id={ "toast-" + strconv.Itoa(seq) } class="toast">{ message }</p>
+		}
+	</div>
+}
