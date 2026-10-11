@@ -1,0 +1,68 @@
+/*
+  Prototype-only scaffolding: shows one state per URL fragment and holds the
+  toast on screen for review. Nothing here ports to production.
+*/
+
+.proto-state {
+  display: none;
+}
+
+.proto-state:target,
+body:not(:has(.proto-state:target)) .proto-state:first-of-type {
+  display: block;
+}
+
+.proto-state .toast {
+  animation-name: toast-in;
+  animation-duration: var(--duration-fast);
+  animation-fill-mode: none;
+}
+
+.proto-nav {
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: var(--column-page);
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-4) var(--space-12);
+  border-block-start: var(--hairline) solid var(--line);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.proto-nav h2 {
+  color: var(--ink);
+  font-size: var(--text-lg);
+}
+
+.proto-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.proto-nav a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.proto-theme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.proto-theme button {
+  min-block-size: 2.25rem;
+  padding-inline: var(--space-3);
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.proto-theme button[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+}
