@@ -47,9 +47,13 @@ Neighbours are generated in Go (each position × 26 letters) and checked against
 
 Expected values for tests (CSW24): 5,586 words reachable from POOP; BOOP absent; daily #0 is DAWN (par 4); daily #423 (2026-10-11 08:00 UTC to 2026-10-12 08:00 UTC) is FUSE (par 5); TIPS has distance 4.
 
+## Migration numbers
+
+00001 app_meta (skeleton), 00002 players (shared), 00003 identity (accounts, sessions, reset links), 00004 word data and games (word_lists, words, calendar_entries, puzzles, games, guesses). Later lanes take the next free number at integration.
+
 ## Players and games
 
-Every visitor is a player, identified by a random opaque cookie token stored only as a hash (`players`). An account (`accounts`: username, Argon2id hash, avatar) attaches to a player. Signing up keeps the current player's history. Logging in moves this browser's anonymous games into the account except puzzles the account already has, then the anonymous player is retired. Sessions follow getajob identity: opaque tokens, hashes stored, expiry, revocation on logout, host-only HttpOnly SameSite=Lax cookies, `--secure-cookie`, cross-origin protection, bounded bodies, rate-limited login. The first account comes from the one-time `/setup?token=…` link printed at startup when no account exists; it is the admin. Sign-up is otherwise open. The admin can issue a single-use password-reset link (stored hashed, 24-hour expiry, like getajob invites) and remove an avatar or account.
+Every visitor who acts is a player (`players`, migration 00002), identified through a session cookie: a random opaque token stored only as a hash. Player rows are created on a player's first command, not on page views. An account (`accounts`: username, Argon2id hash, avatar) attaches to a player. Signing up keeps the current player's history. Logging in moves this browser's anonymous games into the account except puzzles the account already has, then the anonymous player is retired. Sessions follow getajob identity: opaque tokens, hashes stored, expiry, revocation on logout, host-only HttpOnly SameSite=Lax cookies, `--secure-cookie`, cross-origin protection, bounded bodies, rate-limited login. The first account comes from the one-time `/setup?token=…` link printed at startup when no account exists; it is the admin. Sign-up is otherwise open. The admin can issue a single-use password-reset link (stored hashed, 24-hour expiry, like getajob invites) and remove an avatar or account.
 
 `games(id, puzzle_id, player_id, started_at, finished_at, last_rejection, rejection_seq)`, unique `(puzzle_id, player_id)`. `guesses(game_id, position, word, created_at)`. Steps = guesses after the start word; solve time = first guess to the guess reaching POOP. Avatars: upload limit 2 MiB, PNG/JPEG/GIF/WebP accepted, decoded, centre-cropped and resized to 256 px with `golang.org/x/image/draw`, re-encoded PNG, stored as a BLOB with a content hash for caching.
 
