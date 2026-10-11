@@ -1,0 +1,177 @@
+/* Buttons, links and forms. */
+
+@layer components {
+  /* Buttons */
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-block-size: 3rem;
+    padding-inline: var(--space-5);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--key);
+    box-shadow: var(--shadow-key);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .button:hover {
+    background: var(--key-pressed);
+  }
+
+  .button:active {
+    translate: 0 1px;
+  }
+
+  .button--primary {
+    background: var(--wood);
+    box-shadow: inset 0 -3px 0 var(--wood-edge);
+    color: var(--on-wood);
+  }
+
+  .button--primary:hover {
+    background: var(--wood-hover);
+  }
+
+  .button--block {
+    inline-size: 100%;
+  }
+
+  .text-link {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .text-link:hover {
+    color: var(--wood);
+  }
+
+  /* Forms */
+  .form-panel {
+    display: grid;
+    gap: var(--space-5);
+    inline-size: 100%;
+    max-inline-size: var(--column-form);
+    margin-inline: auto;
+  }
+
+  .form-surface {
+    display: grid;
+    gap: var(--space-5);
+    padding: var(--space-6) var(--space-5);
+    border-radius: var(--radius-sheet);
+    background: var(--surface);
+    box-shadow: var(--shadow-raise);
+  }
+
+  .form-intro {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+    text-align: center;
+  }
+
+  .form-intro .brand-mark {
+    inline-size: 3.5rem;
+    block-size: 3.5rem;
+  }
+
+  .field {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .field label,
+  .field legend {
+    font-weight: 700;
+  }
+
+  .field-optional {
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  .field input[type='text'],
+  .field input[type='password'] {
+    min-block-size: 3rem;
+    padding-inline: var(--space-3);
+    border: var(--rule) solid var(--line-strong);
+    border-radius: var(--radius-control);
+    background: var(--tile-empty);
+    color: var(--ink);
+    font-size: var(--text-base);
+  }
+
+  .field input:hover {
+    border-color: var(--ink-faint);
+  }
+
+  .field input:focus-visible {
+    border-color: var(--focus);
+    outline-offset: 0;
+  }
+
+  .field input[aria-invalid='true'] {
+    border-color: var(--tomato);
+  }
+
+  .field-hint {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  .field-error {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--tomato);
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .field-error .icon {
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+  }
+
+  .avatar-picker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .avatar-picker .avatar {
+    inline-size: 4rem;
+    block-size: 4rem;
+    border: var(--rule) dashed var(--line-strong);
+  }
+
+  .avatar-picker input[type='file'] {
+    min-inline-size: 0;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  .avatar-picker input[type='file']::file-selector-button {
+    margin-inline-end: var(--space-3);
+    min-block-size: 2.5rem;
+    padding-inline: var(--space-4);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--key);
+    box-shadow: var(--shadow-key);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .form-switch {
+    color: var(--ink-muted);
+    text-align: center;
+  }
+}

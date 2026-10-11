@@ -1,0 +1,55 @@
+/* Element reset. */
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body,
+  h1,
+  h2,
+  h3,
+  p,
+  ol,
+  ul,
+  dl,
+  dd,
+  figure,
+  fieldset {
+    margin: 0;
+  }
+
+  ol,
+  ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  fieldset {
+    padding: 0;
+    border: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-inline-size: 100%;
+  }
+
+  /* Keep the hidden attribute (the icon sprite) above the display rule above. */
+  [hidden] {
+    display: none;
+  }
+
+  button,
+  input {
+    font: inherit;
+    color: inherit;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+}

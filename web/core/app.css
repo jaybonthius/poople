@@ -1,12 +1,15 @@
-@layer reset, base, components, feature;
+/*
+  Shared stylesheet for every page. Feature stylesheets load after it and put
+  their rules in @layer feature.
+*/
+@layer reset, base, components, motion, feature;
 
-@layer base {
-  :root {
-    color-scheme: light dark;
-    font-family: system-ui, sans-serif;
-  }
-
-  body {
-    margin: 0;
-  }
-}
+@import './styles/tokens.part.css';
+@import './styles/reset.part.css';
+@import './styles/base.part.css';
+@import './styles/shell.part.css';
+@import './styles/controls.part.css';
+@import './styles/ladder.part.css';
+@import './styles/sheet.part.css';
+@import './styles/standings.part.css';
+@import './styles/motion.part.css';

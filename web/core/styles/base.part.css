@@ -1,0 +1,61 @@
+/* Page defaults, focus, visually hidden text and icons. */
+
+@layer base {
+  html {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 100%;
+    line-height: var(--leading);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    accent-color: var(--wood);
+    caret-color: var(--wood);
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  body {
+    min-block-size: 100dvh;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--selection);
+    color: var(--ink);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  a {
+    color: inherit;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.2em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .icon {
+    inline-size: 1.375rem;
+    block-size: 1.375rem;
+    flex: none;
+  }
+}

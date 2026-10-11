@@ -1,0 +1,150 @@
+/*
+  Poople design tokens (DESIGN.md). Light and dark values live side by side in
+  light-dark(); :root follows the system and [data-theme] pins a choice.
+  The shell renders the @font-face rules so their URLs match the hashed preload.
+*/
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+
+    /* Type */
+    --font-display: 'Fredoka', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+    --font-ui: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.375rem;
+    --text-2xl: 1.75rem;
+    --text-3xl: 2.25rem;
+    --text-tile: calc(var(--tile) * 0.56);
+    --leading-tight: 1.1;
+    --leading: 1.45;
+
+    /* Space (4px base) */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+
+    /* Board geometry */
+    --tile: clamp(2.75rem, min(12.5vw, 6.4dvh), 3.5rem);
+    --tile-gap: clamp(0.375rem, 1.6vw, 0.5rem);
+    --rung-gap: clamp(0.375rem, 1dvh, 0.5rem);
+    --rail: 0.375rem;
+    --rail-inset: clamp(0.75rem, 3.5vw, 1rem);
+    --key-block: clamp(3rem, 6.6dvh, 3.5rem);
+    --key-gap: 0.375rem;
+
+    /* Shape */
+    --radius-tile: 0.5rem;
+    --radius-key: 0.5rem;
+    --radius-control: 0.625rem;
+    --radius-sheet: 1.25rem;
+    --radius-pill: 999px;
+    --hairline: 1px;
+    --rule: 2px;
+
+    /* Layout */
+    --header-block: 3.5rem;
+    --column-play: 30rem;
+    --column-page: 46rem;
+    --column-form: 24rem;
+    --column-sheet: 30rem;
+
+    /* Layers */
+    --layer-header: 10;
+    --layer-toast: 30;
+    --layer-scrim: 40;
+    --layer-sheet: 50;
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --duration-press: 90ms;
+    --duration-fast: 160ms;
+    --duration-flip: 420ms;
+    --flip-stagger: 90ms;
+    --duration-shake: 420ms;
+    --duration-sheet: 360ms;
+    --toast-hold: 1800ms;
+
+    /* Colour: every neutral is tinted from board green; ink is never pure black. */
+    --ground: light-dark(#edf2ea, #0f1713);
+    --surface: light-dark(#fbfcf7, #17221c);
+    --surface-sunken: light-dark(#e3ebdf, #0b120e);
+    --ink: light-dark(#18221d, #e7eee4);
+    --ink-muted: light-dark(#475a50, #a5b5ab);
+    --ink-faint: light-dark(#5a7064, #82958a);
+    --line: light-dark(#c8d4c6, #2b3a32);
+    --line-strong: light-dark(#a9b9a8, #3d5046);
+
+    /* Shell: the board-green header band */
+    --board: light-dark(#1d5b40, #123826);
+    --board-deep: light-dark(#164832, #0c2a1c);
+    --on-board: light-dark(#f2f7ee, #e3eedf);
+    --on-board-muted: light-dark(#bcd5c4, #9dbba8);
+
+    /* Tiles */
+    --tile-face: light-dark(#fffdf6, #202d26);
+    --tile-edge: light-dark(#c9d3c4, #0a110d);
+    --tile-line: light-dark(#cfd9cb, #34463c);
+    --tile-ink: light-dark(#18221d, #eef3ea);
+    --tile-empty: light-dark(#f6f9f2, #18231d);
+
+    /* Ladder wood: the poop-brown accent. Matching letters, rails, primary action. */
+    --wood: light-dark(#7a4726, #9a5c2e);
+    --wood-edge: light-dark(#59321a, #6d3f1d);
+    --wood-hover: light-dark(#683b1e, #a96836);
+    --on-wood: light-dark(#fff8ee, #fff6ea);
+    --wood-soft: light-dark(#f1e3d6, #2e2219);
+    --rail-ghost: light-dark(#b89a83, #6b4e38);
+
+    /* Keyboard */
+    --key: light-dark(#dbe5d7, #2a3a31);
+    --key-edge: light-dark(#b5c4b1, #121b16);
+    --key-ink: light-dark(#18221d, #eef3ea);
+    --key-pressed: light-dark(#c9d6c5, #34473c);
+
+    /* Board-game data and state colours */
+    --tomato: light-dark(#b8392a, #ef7a66);
+    --tomato-soft: light-dark(#f8e1dc, #3a1f1a);
+    --mustard: light-dark(#e3a72f, #e8b54a);
+    --mustard-soft: light-dark(#f8ebc9, #33291a);
+    --sky: light-dark(#2a6fae, #79b4e6);
+    --sky-soft: light-dark(#dbe8f3, #18293a);
+    --leaf: light-dark(#2f7a4c, #6cc08c);
+
+    /* Data series: you vs everyone */
+    --series-you: var(--wood);
+    --series-everyone: var(--sky);
+
+    /* Overlays */
+    --scrim: light-dark(rgb(16 32 24 / 46%), rgb(3 8 5 / 66%));
+    --toast-ground: light-dark(#18221d, #eef3ea);
+    --toast-ink: light-dark(#f4f8f1, #18221d);
+    --focus: light-dark(#2a6fae, #8cc2f0);
+    --selection: light-dark(#f3d58e, #6b4e1f);
+
+    /* Depth: offset plus soft blur, tinted from ink */
+    --shadow-tile: inset 0 -3px 0 var(--tile-edge);
+    --shadow-key: inset 0 -2px 0 var(--key-edge);
+    --shadow-raise: 0 1px 2px light-dark(rgb(24 34 29 / 10%), rgb(0 0 0 / 40%));
+    --shadow-sheet: 0 -2px 6px light-dark(rgb(24 34 29 / 8%), rgb(0 0 0 / 30%)), 0 -18px 48px -12px light-dark(rgb(24 34 29 / 28%), rgb(0 0 0 / 60%));
+    --shadow-toast: 0 2px 4px rgb(10 18 14 / 18%), 0 12px 28px -10px rgb(10 18 14 / 40%);
+  }
+
+  [data-theme='light'] {
+    color-scheme: light;
+  }
+
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+}

@@ -2,16 +2,27 @@ package core
 
 import "poople/lib/static"
 
-// Shell is the page document: shared styles, then feature styles, and the
-// pinned Datastar/Rocket runtime that Rocket components import as "datastar".
-templ Shell(title string, styles ...string) {
+// Shell is the page document: fonts, shared styles, then feature styles, the
+// pinned Datastar/Rocket runtime that Rocket components import as "datastar",
+// the icon sprite and the masthead. Children follow the masthead inside the
+// .app frame and must include the feature's <main id="main">.
+//
+// title names the page and marks the matching masthead link as current:
+// "Unlimited", "Leaderboard", "Statistics", "Users" (admin), "Account", and
+// "Log in" or "Sign up". viewer is the signed-in player, or nil when anonymous.
+templ Shell(title string, viewer *Viewer, styles ...string) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
 			<meta name="color-scheme" content="light dark"/>
+			<meta name="theme-color" media="(prefers-color-scheme: light)" content="#1d5b40"/>
+			<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#123826"/>
 			<title>{ title } · Poople</title>
+			<link rel="preload" href={ static.Path("core", "fonts/fredoka-latin.woff2") } as="font" type="font/woff2" crossorigin="anonymous"/>
+			<link rel="preload" href={ static.Path("core", "fonts/figtree-latin.woff2") } as="font" type="font/woff2" crossorigin="anonymous"/>
+			@fontFaces()
 			<link rel="stylesheet" href={ static.Path("core", "styles/app.css") }/>
 			for _, style := range styles {
 				<link rel="stylesheet" href={ templ.SafeURL(style) }/>
@@ -23,8 +34,71 @@ templ Shell(title string, styles ...string) {
 			if Development {
 				<div data-init="@get('/reload', {retry: 'always', retryMaxCount: Infinity, retryInterval:20, retryMaxWaitMs:200})"></div>
 			}
-			{ children... }
-			<noscript><p>Enable JavaScript to play.</p></noscript>
+			@iconSprite()
+			<a class="skip-link" href="#main">Skip to content</a>
+			<div class="app">
+				@masthead(title, viewer)
+				{ children... }
+			</div>
+			<noscript><p class="page">Enable JavaScript to play.</p></noscript>
 		</body>
 	</html>
+}
+
+templ masthead(title string, viewer *Viewer) {
+	<header class="masthead">
+		<a class="brand" href="/"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"></use></svg><span class="brand-name">Poople</span></a>
+		<nav class="masthead-nav" aria-label="Main">
+			@navLink("/unlimited", "Unlimited", "Unlimited", "i-unlimited", title == "Unlimited")
+			@navLink("/leaderboard", "Leaderboard", "Leaderboard", "i-podium", title == "Leaderboard")
+			@navLink("/stats", "Statistics", "Stats", "i-stats", title == "Statistics")
+			if viewer != nil && viewer.IsAdmin {
+				@navLink("/admin/users", "Admin", "Admin", "i-admin", title == "Users")
+			}
+			if viewer != nil {
+				<a class="nav-link" href="/account" aria-label={ "Your account, " + viewer.Username } aria-current={ currentPage(title == "Account") }>
+					if viewer.AvatarURL != "" {
+						<img class="avatar" src={ viewer.AvatarURL } alt=""/>
+					} else {
+						<svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg>
+					}
+					<span class="nav-label" aria-hidden="true">{ viewer.Username }</span>
+				</a>
+			} else {
+				@navLink("/login", "Log in", "Log in", "i-user", title == "Log in" || title == "Sign up")
+			}
+		</nav>
+	</header>
+}
+
+templ navLink(href templ.SafeURL, name, label, icon string, current bool) {
+	<a class="nav-link" href={ href } aria-label={ name } aria-current={ currentPage(current) }><svg class="icon" aria-hidden="true"><use href={ "#" + icon }></use></svg><span class="nav-label" aria-hidden="true">{ label }</span></a>
+}
+
+// iconSprite holds the mascot and the 2px round-stroke icons. Reference them
+// with <svg class="icon" aria-hidden="true"><use href="#i-share"></use></svg>:
+// mascot, i-unlimited, i-podium, i-stats, i-user, i-admin, i-close,
+// i-backspace, i-share, i-alert.
+templ iconSprite() {
+	<svg hidden>
+		<symbol id="mascot" viewBox="0 0 32 32">
+			<path d="M16.5 2.5c1.6 1.2 1.9 3 1 4.6 2.6.4 4.5 2.4 4.5 5 0 .4 0 .8-.2 1.2 2.6.6 4.5 2.6 4.5 5.1 0 .5-.1 1-.2 1.4 2.4.8 4 2.7 4 4.9 0 3.2-3.3 4.8-7.4 4.8H8.3C4.2 29.5 1 27.9 1 24.7c0-2.2 1.6-4.1 4-4.9-.1-.4-.2-.9-.2-1.4 0-2.5 1.9-4.5 4.5-5.1-.1-.4-.2-.8-.2-1.2 0-3 2.6-5.2 5.8-5.2.6-1.5.9-3 1.6-4.4z" fill="#7a4726"></path>
+			<path d="M6 22.3c3 1.4 6.4 2 10 2s7-.6 10-2M9.3 15.6c2 .9 4.3 1.3 6.7 1.3s4.7-.4 6.7-1.3" fill="none" stroke="#59321a" stroke-width="1.2" stroke-linecap="round"></path>
+			<path d="M12 9.6c.8-.9 2-1.4 3.2-1.4" fill="none" stroke="#a8693c" stroke-width="1.3" stroke-linecap="round"></path>
+			<circle cx="12.3" cy="19" r="2.3" fill="#fffdf6"></circle>
+			<circle cx="19.7" cy="19" r="2.3" fill="#fffdf6"></circle>
+			<circle cx="12.7" cy="19.3" r="1.1" fill="#18221d"></circle>
+			<circle cx="20.1" cy="19.3" r="1.1" fill="#18221d"></circle>
+			<path d="M12.6 24.6c2 1.4 4.8 1.4 6.8 0" fill="none" stroke="#fffdf6" stroke-width="1.5" stroke-linecap="round"></path>
+		</symbol>
+		<symbol id="i-unlimited" viewBox="0 0 24 24"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4Zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+		<symbol id="i-podium" viewBox="0 0 24 24"><path d="M9 20V8h6v12M3 20v-7h6M15 20v-9h6v9M2 20h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+		<symbol id="i-stats" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 0)"></path></symbol>
+		<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"></circle><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></symbol>
+		<symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.4 2.9 8 7 10 4.1-2 7-5.6 7-10V6l-7-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+		<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></symbol>
+		<symbol id="i-backspace" viewBox="0 0 24 24"><path d="M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7 6-7Z M12 9l6 6M18 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+		<symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+		<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle><path d="M12 7.5v5.5M12 16.5v.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path></symbol>
+	</svg>
 }

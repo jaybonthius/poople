@@ -6,14 +6,15 @@ import (
 )
 
 // ErrorPage contains only public status copy and a fixed recovery destination.
+// It renders the anonymous masthead because it runs without a signed-in viewer.
 templ ErrorPage(status int) {
-	@Shell(http.StatusText(status)) {
-		<main id="main" class="error-page">
+	@Shell(http.StatusText(status), nil) {
+		<main id="main" class="page error-page">
 			<div role="alert">
-				<h1><code>{ strconv.Itoa(status) }</code> { http.StatusText(status) }</h1>
-				<p>{ errorMessage(status) }</p>
+				<h1 class="page-title">{ strconv.Itoa(status) } { http.StatusText(status) }</h1>
+				<p class="page-lede">{ errorMessage(status) }</p>
 			</div>
-			<a href="/">Back to today's puzzle</a>
+			<p><a class="button button--primary" href="/">Back to today's puzzle</a></p>
 		</main>
 	}
 }

@@ -71,7 +71,7 @@ func TestPlayPageRendersShellAndOpensStream(t *testing.T) {
 	}
 	assertPrivateHeaders(t, w)
 	html := w.Body.String()
-	for _, want := range []string{"<!doctype html>", `type="importmap"`, `data-init="@get('/play/state'`, `<main id="main">`, "<h1>Poople</h1>", "Store ready: poople"} {
+	for _, want := range []string{"<!doctype html>", `type="importmap"`, `data-init="@get('/play/state'`, `<main id="main" class="play">`, `<header class="masthead">`, `<ol class="ladder"`, `<section class="keyboard"`, "Store ready: poople"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("page missing %q", want)
 		}
@@ -99,8 +99,8 @@ func TestPlayStateStreamsMainFromStore(t *testing.T) {
 	}
 	scanner := bufio.NewScanner(response.Body)
 	for scanner.Scan() {
-		if line := scanner.Text(); strings.HasPrefix(line, `data: elements <main id="main">`) {
-			if !strings.Contains(line, "<h1>Poople</h1>") || !strings.Contains(line, "Store ready: poople") {
+		if line := scanner.Text(); strings.HasPrefix(line, `data: elements <main id="main" class="play">`) {
+			if !strings.Contains(line, `<ol class="ladder"`) || !strings.Contains(line, "Store ready: poople") {
 				t.Fatalf("streamed view=%q", line)
 			}
 			return
@@ -134,7 +134,7 @@ func TestNotFoundIsAPageOnlyForNavigation(t *testing.T) {
 		}
 		assertPrivateHeaders(t, w)
 		html := w.Body.String()
-		if !strings.Contains(html, "<!doctype html>") || !strings.Contains(html, `<main id="main" class="error-page">`) || !strings.Contains(html, "Not Found") || strings.Contains(html, "private-query") {
+		if !strings.Contains(html, "<!doctype html>") || !strings.Contains(html, `<main id="main" class="page error-page">`) || !strings.Contains(html, "Not Found") || strings.Contains(html, "private-query") {
 			t.Fatal("navigation 404 is not the shell error page")
 		}
 	}
