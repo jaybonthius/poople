@@ -47,6 +47,7 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 	if err != nil {
 		return nil, "", fmt.Errorf("initialize admin setup: %w", err)
 	}
+	games := game.New(backend, time.Now)
 	router := chi.NewRouter()
 	// No request logger: setup and reset URLs and account bodies contain secrets.
 	router.Use(func(next http.Handler) http.Handler {
@@ -76,6 +77,6 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 	auth.Routes(router, users, setup)
 	account.Routes(ctx, router, users, maxFPS)
 	admin.Routes(ctx, router, users, backend.Players().Changes, maxFPS, identityErrorPage)
-	play.Routes(ctx, router, backend.Database(), maxFPS)
+	play.Routes(ctx, router, users, games, maxFPS)
 	return router, token, nil
 }

@@ -158,7 +158,7 @@ func TestWebBinaryServesAndExitsOnSIGTERM(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.Contains(string(body), "Store ready: poople") {
+	if resp.StatusCode != 200 || !strings.Contains(string(body), `<main id="main" class="play"`) {
 		t.Fatalf("real binary page status=%d", resp.StatusCode)
 	}
 	// An open live stream must not keep the process from exiting.

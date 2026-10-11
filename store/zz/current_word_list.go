@@ -16,7 +16,7 @@ type CurrentWordListStmt struct {
 
 func CurrentWordList(tx *sqlite.Conn) *CurrentWordListStmt {
 	const querySQL = `
-SELECT id AS list_id FROM word_lists ORDER BY id DESC LIMIT 1
+SELECT id AS list_id FROM word_lists ORDER BY activated_at DESC, id DESC LIMIT 1
     `
 
 	ps := &CurrentWordListStmt{

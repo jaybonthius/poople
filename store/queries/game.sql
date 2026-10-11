@@ -2,8 +2,17 @@
 SELECT id AS list_id FROM word_lists WHERE checksum = @checksum;
 
 -- name: InsertWordList :one
-INSERT INTO word_lists (checksum, created_at) VALUES (@checksum, @created_at)
+-- A new version is activated as it is created.
+INSERT INTO word_lists (checksum, created_at, activated_at)
+VALUES (@checksum, @created_at, (SELECT max(CAST(@created_at AS INTEGER), coalesce(max(w.activated_at), 0) + 1) FROM word_lists w))
 RETURNING id;
+
+-- name: ActivateWordList :exec
+-- Makes a stored version current again. activated_at stays strictly increasing
+-- so versions activated within one millisecond keep their order.
+UPDATE word_lists
+SET activated_at = (SELECT max(CAST(@now AS INTEGER), coalesce(max(w.activated_at), 0) + 1) FROM word_lists w)
+WHERE word_lists.id = @list_id;
 
 -- name: InsertWord :exec
 INSERT INTO words (list_id, word, distance, common) VALUES (@list_id, @word, @distance, @common);
@@ -12,7 +21,7 @@ INSERT INTO words (list_id, word, distance, common) VALUES (@list_id, @word, @di
 INSERT INTO calendar_entries (list_id, position, word) VALUES (@list_id, @position, @word);
 
 -- name: CurrentWordList :one
-SELECT id AS list_id FROM word_lists ORDER BY id DESC LIMIT 1;
+SELECT id AS list_id FROM word_lists ORDER BY activated_at DESC, id DESC LIMIT 1;
 
 -- name: ListedWord :one
 -- A word in the list; distance is NULL when it cannot reach POOP.
@@ -82,3 +91,13 @@ WHERE games.player_id = @from_player
 
 -- name: DeletePlayerGames :exec
 DELETE FROM games WHERE player_id = @player_id;
+
+-- name: PuzzleStandings :many
+-- Finished games on the puzzle, best first: fewest steps, then fastest solve,
+-- then earliest finish. account_id is NULL for anonymous players.
+SELECT g.player_id, a.id AS account_id, a.username, a.avatar_hash,
+    (SELECT count(*) FROM guesses s WHERE s.game_id = g.id) AS steps,
+    g.finished_at - g.started_at AS solve_time
+FROM games g LEFT JOIN accounts a ON a.player_id = g.player_id
+WHERE g.puzzle_id = @puzzle_id AND g.finished_at IS NOT NULL
+ORDER BY steps, solve_time, g.finished_at, g.player_id;

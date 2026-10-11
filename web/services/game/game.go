@@ -40,6 +40,8 @@ const (
 var (
 	ErrPuzzleNotFound = errors.New("puzzle not found")
 	ErrGameFinished   = errors.New("game already finished")
+	// ErrPuzzleClosed refuses guesses on a daily puzzle after the next one opens.
+	ErrPuzzleClosed = errors.New("daily puzzle closed")
 )
 
 // Puzzle is what any player may see of a puzzle before finishing it; par and
@@ -198,12 +200,16 @@ func (s *Service) CurrentUnlimited(ctx context.Context, playerID int64) (Puzzle,
 
 // Guess validates word against the puzzle's frozen list and the player's
 // ladder, then either appends it or records the rejection. It returns the
-// rejection, "" when accepted. Unlimited puzzles accept guesses only from the
-// player who started them.
+// rejection, "" when accepted. Re-submitting the ladder's last word changes
+// nothing, so a repeated Enter is harmless. Unlimited puzzles accept guesses
+// only from the player who started them; daily puzzles only while they are
+// today's (ErrPuzzleClosed).
 func (s *Service) Guess(ctx context.Context, playerID, puzzleID int64, word string) (Rejection, error) {
 	word = strings.ToLower(word)
-	at := s.now().UnixMilli()
+	now := s.now()
+	at := now.UnixMilli()
 	var rejection Rejection
+	changed := true
 	err := s.db.Write(ctx, func(conn *sqlite.Conn) error {
 		puzzle, err := zz.OnceGetPuzzle(conn, puzzleID)
 		if err != nil {
@@ -211,6 +217,9 @@ func (s *Service) Guess(ctx context.Context, playerID, puzzleID int64, word stri
 		}
 		if puzzle == nil {
 			return ErrPuzzleNotFound
+		}
+		if Kind(puzzle.Kind) == Daily && (puzzle.Number == nil || int(*puzzle.Number) != ladder.DailyNumber(now)) {
+			return ErrPuzzleClosed
 		}
 		key := zz.GetGameParams{PuzzleId: puzzleID, PlayerId: playerID}
 		if Kind(puzzle.Kind) != Unlimited {
@@ -235,6 +244,10 @@ func (s *Service) Guess(ctx context.Context, playerID, puzzleID int64, word stri
 		last := puzzle.StartWord
 		if len(guesses) > 0 {
 			last = guesses[len(guesses)-1].Word
+		}
+		if word == last {
+			changed = false
+			return nil
 		}
 		listed, err := zz.OnceListedWord(conn, zz.ListedWordParams{ListId: puzzle.ListId, Word: word})
 		if err != nil {
@@ -266,8 +279,10 @@ func (s *Service) Guess(ctx context.Context, playerID, puzzleID int64, word stri
 	if err != nil {
 		return "", err
 	}
-	s.puzzles.Notify(puzzleID)
-	s.players.Notify(playerID)
+	if changed {
+		s.puzzles.Notify(puzzleID)
+		s.players.Notify(playerID)
+	}
 	return rejection, nil
 }
 
@@ -316,6 +331,64 @@ func (s *Service) GameView(ctx context.Context, playerID, puzzleID int64) (Game,
 		return err
 	})
 	return view, err
+}
+
+// Standing is one finished game on a puzzle's leaderboard.
+type Standing struct {
+	Rank       int // 1 for the best game listed
+	PlayerID   int64
+	AccountID  int64  // 0 for the viewer's own anonymous game
+	Username   string // "" for the viewer's own anonymous game
+	AvatarHash string // "" without a picture
+	Steps      int
+	SolveTime  time.Duration
+	You        bool // the viewer's own game
+}
+
+// Standings is a puzzle's leaderboard as one viewer sees it.
+type Standings struct {
+	// Rows are the finished games of players with accounts, ranked by steps,
+	// then solve time, then who finished first. An anonymous viewer who has
+	// finished is ranked among them too, without a name.
+	Rows []Standing
+	// Anonymous counts the other anonymous players who finished; they are not listed.
+	Anonymous int
+}
+
+// Standings reads the finished games on the puzzle for viewerPlayerID, which
+// is 0 for a visitor who has not played. Rows reveal other players' steps, so
+// show them to a player only once they have finished the puzzle.
+func (s *Service) Standings(ctx context.Context, puzzleID, viewerPlayerID int64) (Standings, error) {
+	var standings Standings
+	err := s.db.Read(ctx, func(conn *sqlite.Conn) error {
+		rows, err := zz.OncePuzzleStandings(conn, puzzleID)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			you := viewerPlayerID != 0 && row.PlayerId == viewerPlayerID
+			if row.AccountId == nil && !you {
+				standings.Anonymous++
+				continue
+			}
+			standing := Standing{
+				Rank: len(standings.Rows) + 1, PlayerID: row.PlayerId, Steps: int(row.Steps),
+				SolveTime: time.Duration(row.SolveTime) * time.Millisecond, You: you,
+			}
+			if row.AccountId != nil {
+				standing.AccountID = *row.AccountId
+			}
+			if row.Username != nil {
+				standing.Username = *row.Username
+			}
+			if row.AvatarHash != nil {
+				standing.AvatarHash = *row.AvatarHash
+			}
+			standings.Rows = append(standings.Rows, standing)
+		}
+		return nil
+	})
+	return standings, err
 }
 
 // MergePlayers moves from's games to the player to, except puzzles to already

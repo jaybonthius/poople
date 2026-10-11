@@ -1,0 +1,56 @@
+/* Play page: the share row, the finish sheet's focus, blank avatars and the reopen-result link. */
+
+@layer feature {
+  /* share-result renders its button in light DOM, so the host takes the button's place in .share-row.
+     Both actions split the row evenly, so the share label changing to "Copied!" or
+     "Couldn't copy" does not push Play unlimited onto its own line; they stack only
+     when either label cannot fit half the row. */
+  share-result {
+    display: flex;
+  }
+
+  .share-row > share-result,
+  .share-row > .button {
+    flex: 1 1 0;
+    min-inline-size: max-content;
+  }
+
+  .share-row .button {
+    flex-grow: 1;
+    padding-inline: var(--space-4);
+    white-space: nowrap;
+  }
+
+  /* The finish sheet takes focus when it opens so keyboard and screen-reader
+     users land in it; the sheet itself needs no focus ring. */
+  #finish:focus-visible {
+    outline: none;
+  }
+
+  .avatar--blank {
+    display: grid;
+    place-items: center;
+    color: var(--ink-muted);
+  }
+
+  .avatar--blank .icon {
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+  }
+
+  .result-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .result-link:hover {
+    color: var(--wood);
+  }
+}

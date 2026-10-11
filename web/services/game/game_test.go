@@ -165,7 +165,6 @@ func TestGuessRejectionsAreStoredAndSequenced(t *testing.T) {
 		{"", game.Incomplete},
 		{"boop", game.NotInList},
 		{"fusee", game.NotInList},
-		{"fuse", game.NotOneLetter}, // the last word itself
 		{"poop", game.NotOneLetter},
 	} {
 		f.guess(t, player, puzzle, c.word, c.want)
@@ -176,12 +175,12 @@ func TestGuessRejectionsAreStoredAndSequenced(t *testing.T) {
 	}
 	f.guess(t, player, puzzle, path[1], "")
 	view := f.view(t, player, puzzle)
-	if view.Rejection != "" || view.RejectionSeq != 6 || !slices.Equal(view.Ladder, path[:2]) {
+	if view.Rejection != "" || view.RejectionSeq != 5 || !slices.Equal(view.Ladder, path[:2]) {
 		t.Fatalf("after accepted guess view = %+v", view)
 	}
 	// Two steps from the latest guess on a shortest path, so never one letter away.
 	f.guess(t, player, puzzle, path[3], game.NotOneLetter)
-	if view := f.view(t, player, puzzle); view.RejectionSeq != 7 || len(view.Ladder) != 2 {
+	if view := f.view(t, player, puzzle); view.RejectionSeq != 6 || len(view.Ladder) != 2 {
 		t.Fatalf("after rejected guess view = %+v", view)
 	}
 }
@@ -305,13 +304,13 @@ func TestMergePlayersKeepsTheAccountsGames(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	anonymous, account := f.player(t), f.player(t)
+	data := csw(t)
 	yesterday := f.daily(t)
+	yesterdayPath, _ := data.ShortestPath(yesterday.StartWord)
+	f.guess(t, anonymous, yesterday.ID, yesterdayPath[1], "")
 	f.clock.Set(day423.Add(24 * time.Hour))
 	today := f.daily(t)
-	data := csw(t)
-	yesterdayPath, _ := data.ShortestPath(yesterday.StartWord)
 	todayPath, _ := data.ShortestPath(today.StartWord)
-	f.guess(t, anonymous, yesterday.ID, yesterdayPath[1], "")
 	f.guess(t, anonymous, today.ID, todayPath[1], "")
 	f.guess(t, anonymous, today.ID, todayPath[2], "")
 	f.guess(t, account, today.ID, todayPath[1], "")
@@ -349,9 +348,9 @@ func TestConcurrentGuessesKeepEachLadder(t *testing.T) {
 	for _, player := range players {
 		wg.Go(func() {
 			for _, word := range path[1:] {
-				// Two identical concurrent guesses: one is accepted; the other is no
-				// longer one letter away, or the game is already finished.
-				results := make(chan bool, 2)
+				// Two identical concurrent guesses, as from a double Enter: one is
+				// accepted; the other repeats the last word and changes nothing, or
+				// finds the game already finished.
 				var both sync.WaitGroup
 				for range 2 {
 					both.Go(func() {
@@ -359,20 +358,12 @@ func TestConcurrentGuessesKeepEachLadder(t *testing.T) {
 						if err != nil && !(word == ladder.Target && errors.Is(err, game.ErrGameFinished)) {
 							t.Error(err)
 						}
-						results <- err == nil && rejection == ""
+						if rejection != "" {
+							t.Errorf("player %d: copy of %q rejected: %s", player, word, rejection)
+						}
 					})
 				}
 				both.Wait()
-				close(results)
-				var accepted int
-				for ok := range results {
-					if ok {
-						accepted++
-					}
-				}
-				if accepted != 1 {
-					t.Errorf("player %d: %d copies of %q accepted", player, accepted, word)
-				}
 			}
 		})
 	}
@@ -384,8 +375,125 @@ func TestConcurrentGuessesKeepEachLadder(t *testing.T) {
 	}
 	for _, player := range players {
 		view := f.view(t, player, puzzle)
-		if !view.Finished || !slices.Equal(view.Ladder, path) || view.RejectionSeq != 4 {
+		if !view.Finished || !slices.Equal(view.Ladder, path) || view.RejectionSeq != 0 {
 			t.Fatalf("player %d view = %+v", player, view)
 		}
+	}
+}
+
+func TestRepeatingTheLastWordChangesNothing(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	player, puzzle := f.player(t), f.daily(t).ID
+	path, _ := csw(t).ShortestPath("fuse")
+	f.guess(t, player, puzzle, "zzzz", game.NotInList)
+	unchanged := func(word string) {
+		t.Helper()
+		changes := f.games.PuzzleChanges(puzzle)
+		f.guess(t, player, puzzle, word, "")
+		select {
+		case <-changes:
+			t.Fatalf("repeating %q notified the puzzle topic", word)
+		default:
+		}
+	}
+	unchanged("FUSE") // the start word is the last word until a guess lands
+	f.guess(t, player, puzzle, path[1], "")
+	unchanged(path[1])
+	view := f.view(t, player, puzzle)
+	if !slices.Equal(view.Ladder, path[:2]) || view.RejectionSeq != 1 || view.Rejection != "" {
+		t.Fatalf("after repeating %q view = %+v", path[1], view)
+	}
+}
+
+func TestGuessesOnYesterdaysPuzzleAreRefused(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	player := f.player(t)
+	yesterday := f.daily(t)
+	path, _ := csw(t).ShortestPath(yesterday.StartWord)
+	f.guess(t, player, yesterday.ID, path[1], "")
+	f.clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
+	if _, err := f.games.Guess(t.Context(), player, yesterday.ID, path[2]); !errors.Is(err, game.ErrPuzzleClosed) {
+		t.Fatalf("guess after the next puzzle opened = %v, want ErrPuzzleClosed", err)
+	}
+	if view := f.view(t, player, yesterday.ID); !slices.Equal(view.Ladder, path[:2]) || view.RejectionSeq != 0 {
+		t.Fatalf("closed puzzle changed: %+v", view)
+	}
+	today := f.daily(t)
+	todayPath, _ := csw(t).ShortestPath(today.StartWord)
+	f.guess(t, player, today.ID, todayPath[1], "")
+}
+
+func TestStandingsRankAccountsAndTheAnonymousViewer(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	puzzle := f.daily(t).ID
+	account := func(name string, avatar bool) int64 {
+		t.Helper()
+		player := f.player(t)
+		var hash any
+		if avatar {
+			hash = name + "-hash"
+		}
+		if err := f.backend.Database().Write(t.Context(), func(conn *sqlite.Conn) error {
+			return sqlitex.Execute(conn, "INSERT INTO accounts(player_id, username, password_hash, avatar, avatar_hash, created_at) VALUES (?, ?, 'x', CASE WHEN ? IS NULL THEN NULL ELSE x'00' END, ?, 0)",
+				&sqlitex.ExecOptions{Args: []any{player, name, hash, hash}})
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return player
+	}
+	slow, fast, long, unfinished := account("slow", true), account("fast", false), account("long", false), account("unfinished", false)
+	anonymous, otherAnonymous := f.player(t), f.player(t)
+	path, _ := csw(t).ShortestPath("fuse")
+	// play finishes the puzzle from minute start, one guess a minute; a detour
+	// adds two steps (fuse -> muse -> fuse) before a shortest ladder.
+	play := func(player int64, start int, detour bool) {
+		t.Helper()
+		words := path[1:]
+		if detour {
+			words = append([]string{"muse", "fuse"}, words...)
+		}
+		for i, word := range words {
+			f.clock.Set(day423.Add(time.Duration(start+i) * time.Minute))
+			f.guess(t, player, puzzle, word, "")
+		}
+	}
+	play(slow, 0, false)      // 5 steps, 4 minutes
+	play(fast, 10, false)     // 5 steps, 4 minutes, finished later
+	play(long, 20, true)      // 7 steps
+	play(anonymous, 30, true) // 7 steps, after long
+	play(otherAnonymous, 40, false)
+	f.guess(t, unfinished, puzzle, path[1], "")
+
+	got, err := f.games.Standings(t.Context(), puzzle, anonymous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []game.Standing{
+		{Rank: 1, PlayerID: slow, Username: "slow", AvatarHash: "slow-hash", Steps: 5, SolveTime: 4 * time.Minute},
+		{Rank: 2, PlayerID: fast, Username: "fast", Steps: 5, SolveTime: 4 * time.Minute},
+		{Rank: 3, PlayerID: long, Username: "long", Steps: 7, SolveTime: 6 * time.Minute},
+		{Rank: 4, PlayerID: anonymous, Steps: 7, SolveTime: 6 * time.Minute, You: true},
+	}
+	for i := range want[:3] {
+		want[i].AccountID = got.Rows[i].AccountID
+		if want[i].AccountID == 0 {
+			t.Fatalf("row %d lacks its account id: %+v", i, got.Rows[i])
+		}
+	}
+	if !slices.Equal(got.Rows, want) || got.Anonymous != 1 {
+		t.Fatalf("standings for the anonymous viewer = %+v, want %+v and 1 other anonymous", got, want)
+	}
+	byAccount, err := f.games.Standings(t.Context(), puzzle, fast)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(byAccount.Rows) != 3 || !byAccount.Rows[1].You || byAccount.Rows[0].You || byAccount.Anonymous != 2 {
+		t.Fatalf("standings for an account = %+v", byAccount)
+	}
+	if visitor, err := f.games.Standings(t.Context(), puzzle, 0); err != nil || len(visitor.Rows) != 3 || visitor.Anonymous != 2 {
+		t.Fatalf("standings for a visitor = %+v, %v", visitor, err)
 	}
 }

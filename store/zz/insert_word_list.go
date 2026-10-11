@@ -21,7 +21,8 @@ type InsertWordListStmt struct {
 
 func InsertWordList(tx *sqlite.Conn) *InsertWordListStmt {
 	const querySQL = `
-INSERT INTO word_lists (checksum, created_at) VALUES (?1, ?2)
+INSERT INTO word_lists (checksum, created_at, activated_at)
+VALUES (?1, ?2, (SELECT max(CAST(?2 AS INTEGER), coalesce(max(w.activated_at), 0) + 1) FROM word_lists w))
 RETURNING id
     `
 

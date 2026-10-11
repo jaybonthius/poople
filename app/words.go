@@ -12,21 +12,35 @@ import (
 	"zombiezen.com/go/sqlite"
 )
 
-// LoadWords stores data as a new word-list version unless its checksum is
-// already stored, and returns the version's id. A new version becomes current;
-// older versions stay intact for the puzzles that froze them.
+// LoadWords makes data the current word-list version and returns its id. New
+// data is stored as a new version; data matching a stored checksum, such as
+// source files reverted to an earlier version, re-activates that version.
+// Older versions stay intact for the puzzles that froze them.
 func LoadWords(ctx context.Context, db *store.Store, data *ladder.Data) (listID int64, err error) {
 	checksum := data.Checksum()
+	var current int64
 	if err := db.Read(ctx, func(conn *sqlite.Conn) (err error) {
-		listID, err = zz.OnceFindWordList(conn, checksum)
+		if listID, err = zz.OnceFindWordList(conn, checksum); err != nil {
+			return err
+		}
+		current, err = zz.OnceCurrentWordList(conn)
 		return err
-	}); err != nil || listID != 0 {
+	}); err != nil || (listID != 0 && listID == current) {
+		return listID, err
+	}
+	if listID != 0 {
+		err = db.Write(ctx, func(conn *sqlite.Conn) error {
+			return zz.OnceActivateWordList(conn, zz.ActivateWordListParams{Now: time.Now().UnixMilli(), ListId: listID})
+		})
 		return listID, err
 	}
 	words, calendar := data.Words(), data.Calendar()
 	err = db.Write(ctx, func(conn *sqlite.Conn) (err error) {
 		// Another process may have stored the same data since the read.
 		if listID, err = zz.OnceFindWordList(conn, checksum); err != nil || listID != 0 {
+			if err == nil {
+				err = zz.OnceActivateWordList(conn, zz.ActivateWordListParams{Now: time.Now().UnixMilli(), ListId: listID})
+			}
 			return err
 		}
 		if listID, err = zz.OnceInsertWordList(conn, zz.InsertWordListParams{Checksum: checksum, CreatedAt: time.Now().UnixMilli()}); err != nil {
