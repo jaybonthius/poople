@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#1d5b40">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#123826">
+<title>Poople design prototype</title>
+<link rel="preload" href="fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="prototype.css">
+<script>
+  (() => {
+    const pick = new URLSearchParams(location.search).get('theme') || localStorage.getItem('poople-theme');
+    if (pick === 'light' || pick === 'dark') document.documentElement.dataset.theme = pick;
+  })();
+</script>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" hidden>
+  <symbol id="mascot" viewBox="0 0 32 32">
+    <path d="M16.5 2.5c1.6 1.2 1.9 3 1 4.6 2.6.4 4.5 2.4 4.5 5 0 .4 0 .8-.2 1.2 2.6.6 4.5 2.6 4.5 5.1 0 .5-.1 1-.2 1.4 2.4.8 4 2.7 4 4.9 0 3.2-3.3 4.8-7.4 4.8H8.3C4.2 29.5 1 27.9 1 24.7c0-2.2 1.6-4.1 4-4.9-.1-.4-.2-.9-.2-1.4 0-2.5 1.9-4.5 4.5-5.1-.1-.4-.2-.8-.2-1.2 0-3 2.6-5.2 5.8-5.2.6-1.5.9-3 1.6-4.4z" fill="#7a4726"/>
+    <path d="M6 22.3c3 1.4 6.4 2 10 2s7-.6 10-2M9.3 15.6c2 .9 4.3 1.3 6.7 1.3s4.7-.4 6.7-1.3" fill="none" stroke="#59321a" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M12 9.6c.8-.9 2-1.4 3.2-1.4" fill="none" stroke="#a8693c" stroke-width="1.3" stroke-linecap="round"/>
+    <circle cx="12.3" cy="19" r="2.3" fill="#fffdf6"/><circle cx="19.7" cy="19" r="2.3" fill="#fffdf6"/>
+    <circle cx="12.7" cy="19.3" r="1.1" fill="#18221d"/><circle cx="20.1" cy="19.3" r="1.1" fill="#18221d"/>
+    <path d="M12.6 24.6c2 1.4 4.8 1.4 6.8 0" fill="none" stroke="#fffdf6" stroke-width="1.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-unlimited" viewBox="0 0 24 24"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4Zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-podium" viewBox="0 0 24 24"><path d="M9 20V8h6v12M3 20v-7h6M15 20v-9h6v9M2 20h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 0)"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-backspace" viewBox="0 0 24 24"><path d="M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7 6-7Z M12 9l6 6M18 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5.5M12 16.5v.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+</svg>
+<section class="proto-state" id="start" aria-label="Start of a puzzle">
+  <div class="app app--play">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="play">
+      <div class="puzzle-heading">
+        <h1 class="puzzle-title">Daily #423</h1>
+        <p class="puzzle-date"><time datetime="2026-10-11">Sunday 11 October</time></p>
+        <p class="puzzle-hint">Change one letter at a time. Every step must be a word.</p>
+      </div>
+      <div class="board">
+        <ol class="ladder" aria-label="Your ladder from FUSE to POOP">
+          <li class="rung rung--start"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">E</span><span class="visually-hidden">FUSE, start word</span></li><li class="rung rung--input"><span class="tile tile--cursor" aria-hidden="true"></span><span class="tile" aria-hidden="true"></span><span class="tile" aria-hidden="true"></span><span class="tile" aria-hidden="true"></span><span class="visually-hidden">Your next word: empty</span></li><li class="rung rung--gap" aria-hidden="true"></li><li class="rung rung--goal"><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">O</span><span class="tile" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="visually-hidden">Goal: POOP</span></li>
+        </ol>
+      </div>
+      <section class="keyboard" aria-label="Keyboard"><div class="keyboard-row"><button type="button" class="key">q</button><button type="button" class="key">w</button><button type="button" class="key">e</button><button type="button" class="key">r</button><button type="button" class="key">t</button><button type="button" class="key">y</button><button type="button" class="key">u</button><button type="button" class="key">i</button><button type="button" class="key">o</button><button type="button" class="key">p</button></div><div class="keyboard-row keyboard-row--middle"><button type="button" class="key">a</button><button type="button" class="key">s</button><button type="button" class="key">d</button><button type="button" class="key">f</button><button type="button" class="key">g</button><button type="button" class="key">h</button><button type="button" class="key">j</button><button type="button" class="key">k</button><button type="button" class="key">l</button></div><div class="keyboard-row"><button type="button" class="key key--wide key--enter">Enter</button><button type="button" class="key">z</button><button type="button" class="key">x</button><button type="button" class="key">c</button><button type="button" class="key">v</button><button type="button" class="key">b</button><button type="button" class="key">n</button><button type="button" class="key">m</button><button type="button" class="key key--wide" aria-label="Delete letter"><svg class="icon" aria-hidden="true"><use href="#i-backspace"/></svg></button></div></section>
+    </main>
+
+
+  </div>
+</section>
+<section class="proto-state" id="playing" aria-label="Mid-game">
+  <div class="app app--play">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="play">
+      <div class="puzzle-heading">
+        <h1 class="puzzle-title">Daily #423</h1>
+        <p class="puzzle-date"><time datetime="2026-10-11">Sunday 11 October</time></p>
+
+      </div>
+      <div class="board">
+        <ol class="ladder" aria-label="Your ladder from FUSE to POOP">
+          <li class="rung rung--start"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">E</span><span class="visually-hidden">FUSE, start word</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FUSS</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOSS, 1 letter in place</span></li><li class="rung rung--fresh"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOPS, 1 letter in place</span></li><li class="rung rung--input"><span class="tile tile--typed" aria-hidden="true">L</span><span class="tile tile--typed" aria-hidden="true">O</span><span class="tile tile--cursor" aria-hidden="true"></span><span class="tile" aria-hidden="true"></span><span class="visually-hidden">Your next word: L O</span></li><li class="rung rung--gap" aria-hidden="true"></li><li class="rung rung--goal"><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">O</span><span class="tile" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="visually-hidden">Goal: POOP</span></li>
+        </ol>
+      </div>
+      <section class="keyboard" aria-label="Keyboard"><div class="keyboard-row"><button type="button" class="key">q</button><button type="button" class="key">w</button><button type="button" class="key">e</button><button type="button" class="key">r</button><button type="button" class="key">t</button><button type="button" class="key">y</button><button type="button" class="key">u</button><button type="button" class="key">i</button><button type="button" class="key">o</button><button type="button" class="key">p</button></div><div class="keyboard-row keyboard-row--middle"><button type="button" class="key">a</button><button type="button" class="key">s</button><button type="button" class="key">d</button><button type="button" class="key">f</button><button type="button" class="key">g</button><button type="button" class="key">h</button><button type="button" class="key">j</button><button type="button" class="key">k</button><button type="button" class="key">l</button></div><div class="keyboard-row"><button type="button" class="key key--wide key--enter">Enter</button><button type="button" class="key">z</button><button type="button" class="key">x</button><button type="button" class="key">c</button><button type="button" class="key">v</button><button type="button" class="key">b</button><button type="button" class="key">n</button><button type="button" class="key">m</button><button type="button" class="key key--wide" aria-label="Delete letter"><svg class="icon" aria-hidden="true"><use href="#i-backspace"/></svg></button></div></section>
+    </main>
+
+
+  </div>
+</section>
+<section class="proto-state" id="rejected" aria-label="Rejected guess">
+  <div class="app app--play">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="play">
+      <div class="puzzle-heading">
+        <h1 class="puzzle-title">Daily #423</h1>
+        <p class="puzzle-date"><time datetime="2026-10-11">Sunday 11 October</time></p>
+
+      </div>
+      <div class="board">
+        <ol class="ladder" aria-label="Your ladder from FUSE to POOP">
+          <li class="rung rung--start"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">E</span><span class="visually-hidden">FUSE, start word</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FUSS</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOSS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOPS, 1 letter in place</span></li><li class="rung rung--input rung--rejected"><span class="tile tile--typed" aria-hidden="true">F</span><span class="tile tile--typed" aria-hidden="true">O</span><span class="tile tile--typed" aria-hidden="true">P</span><span class="tile tile--typed" aria-hidden="true">E</span><span class="visually-hidden">Your next word: F O P E, rejected</span></li><li class="rung rung--gap" aria-hidden="true"></li><li class="rung rung--goal"><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">O</span><span class="tile" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="visually-hidden">Goal: POOP</span></li>
+        </ol>
+      </div>
+      <section class="keyboard" aria-label="Keyboard"><div class="keyboard-row"><button type="button" class="key">q</button><button type="button" class="key">w</button><button type="button" class="key">e</button><button type="button" class="key">r</button><button type="button" class="key">t</button><button type="button" class="key">y</button><button type="button" class="key">u</button><button type="button" class="key">i</button><button type="button" class="key">o</button><button type="button" class="key">p</button></div><div class="keyboard-row keyboard-row--middle"><button type="button" class="key">a</button><button type="button" class="key">s</button><button type="button" class="key">d</button><button type="button" class="key">f</button><button type="button" class="key">g</button><button type="button" class="key">h</button><button type="button" class="key">j</button><button type="button" class="key">k</button><button type="button" class="key">l</button></div><div class="keyboard-row"><button type="button" class="key key--wide key--enter">Enter</button><button type="button" class="key">z</button><button type="button" class="key">x</button><button type="button" class="key">c</button><button type="button" class="key">v</button><button type="button" class="key">b</button><button type="button" class="key">n</button><button type="button" class="key">m</button><button type="button" class="key key--wide" aria-label="Delete letter"><svg class="icon" aria-hidden="true"><use href="#i-backspace"/></svg></button></div></section>
+    </main>
+    <div class="toast" role="status">Not in word list</div>
+
+  </div>
+</section>
+<section class="proto-state" id="finish" aria-label="Finish sheet">
+  <div class="app app--play">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="play">
+      <div class="puzzle-heading">
+        <h1 class="puzzle-title">Daily #423</h1>
+        <p class="puzzle-date"><time datetime="2026-10-11">Sunday 11 October</time></p>
+
+      </div>
+      <div class="board">
+        <ol class="ladder" aria-label="Your ladder from FUSE to POOP">
+          <li class="rung rung--start"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">E</span><span class="visually-hidden">FUSE, start word</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FUSS</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOSS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOPS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">L</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">LOPS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">L</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">P</span><span class="visually-hidden">LOOP, 3 letters in place</span></li><li class="rung rung--reached"><span class="tile tile--match" aria-hidden="true">P</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">P</span><span class="visually-hidden">POOP, reached</span></li>
+        </ol>
+      </div>
+      <section class="keyboard" aria-label="Keyboard"><div class="keyboard-row"><button type="button" class="key">q</button><button type="button" class="key">w</button><button type="button" class="key">e</button><button type="button" class="key">r</button><button type="button" class="key">t</button><button type="button" class="key">y</button><button type="button" class="key">u</button><button type="button" class="key">i</button><button type="button" class="key">o</button><button type="button" class="key">p</button></div><div class="keyboard-row keyboard-row--middle"><button type="button" class="key">a</button><button type="button" class="key">s</button><button type="button" class="key">d</button><button type="button" class="key">f</button><button type="button" class="key">g</button><button type="button" class="key">h</button><button type="button" class="key">j</button><button type="button" class="key">k</button><button type="button" class="key">l</button></div><div class="keyboard-row"><button type="button" class="key key--wide key--enter">Enter</button><button type="button" class="key">z</button><button type="button" class="key">x</button><button type="button" class="key">c</button><button type="button" class="key">v</button><button type="button" class="key">b</button><button type="button" class="key">n</button><button type="button" class="key">m</button><button type="button" class="key key--wide" aria-label="Delete letter"><svg class="icon" aria-hidden="true"><use href="#i-backspace"/></svg></button></div></section>
+    </main>
+
+    <div class="sheet-scrim"></div>
+    <dialog class="sheet" open aria-labelledby="finish-title">
+      <div class="sheet-header">
+        <div class="result">
+          <h2 class="verdict" id="finish-title">Solved</h2>
+          <p class="result-route">FUSE → POOP</p>
+          <p class="result-score"><span><strong>6 steps</strong>, par 5</span><span class="par-delta">+1 over par</span></p>
+        </div>
+        <button type="button" class="sheet-close" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <section class="sheet-section" aria-labelledby="finish-solution-title">
+        <h3 class="sheet-section-title" id="finish-solution-title">A shortest ladder</h3>
+        <ol class="solution"><li class="solution-step"><span class="mini-word"><span class="mini-tile" aria-hidden="true">F</span><span class="mini-tile" aria-hidden="true">U</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">E</span></span><span class="visually-hidden">FUSE</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile" aria-hidden="true">F</span><span class="mini-tile" aria-hidden="true">U</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">FUSS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile" aria-hidden="true">U</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">PUSS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">POSS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">POOS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile tile--match" aria-hidden="true">P</span></span><span class="visually-hidden">POOP</span></li></ol>
+      </section>
+      <div class="share-row">
+        <button type="button" class="button button--primary"><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>Share result</button>
+        <a class="button" href="#start"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg>Play unlimited</a>
+      </div>
+      <p class="countdown">Next puzzle in <time datetime="PT9H39M28S">9:39:28</time></p>
+      <section class="sheet-section" aria-labelledby="finish-today-title">
+        <div class="sheet-section-head">
+          <h3 class="sheet-section-title" id="finish-today-title">Today’s leaderboard</h3>
+          <span class="live-tag">Live</span>
+        </div>
+        <ol class="standings"><li class="standing"><span class="rank rank--first">1</span><img class="avatar" src="avatars/mira.svg" alt=""><span class="standing-name">mira</span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>0:48</span></li><li class="standing"><span class="rank">2</span><img class="avatar" src="avatars/tomasz.svg" alt=""><span class="standing-name">tomasz</span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>1:32</span></li><li class="standing"><span class="rank">3</span><img class="avatar" src="avatars/priya.svg" alt=""><span class="standing-name">priya</span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>2:10</span></li><li class="standing standing--you"><span class="rank">4</span><img class="avatar" src="avatars/jay.svg" alt=""><span class="standing-name">jay<span class="you-tag">You</span></span><span class="standing-steps">6 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>1:05</span></li><li class="standing"><span class="rank">5</span><img class="avatar" src="avatars/bex.svg" alt=""><span class="standing-name">bex</span><span class="standing-steps">6 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>3:41</span></li><li class="standing"><span class="rank">6</span><img class="avatar" src="avatars/ollie.svg" alt=""><span class="standing-name">ollie</span><span class="standing-steps">7 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>2:02</span></li></ol>
+        <p class="footnote">12 anonymous players also solved #423.</p>
+      </section>
+      <p class="sheet-links"><a class="text-link" href="#stats">Your statistics</a><a class="text-link" href="#leaderboard">Full leaderboard</a></p>
+    </dialog>
+  </div>
+</section>
+<section class="proto-state" id="finish-perfect" aria-label="Finish sheet, on par">
+  <div class="app app--play">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="play">
+      <div class="puzzle-heading">
+        <h1 class="puzzle-title">Daily #423</h1>
+        <p class="puzzle-date"><time datetime="2026-10-11">Sunday 11 October</time></p>
+
+      </div>
+      <div class="board">
+        <ol class="ladder" aria-label="Your ladder from FUSE to POOP">
+          <li class="rung rung--start"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">E</span><span class="visually-hidden">FUSE, start word</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FUSS</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOSS, 1 letter in place</span></li><li class="rung"><span class="tile tile--match" aria-hidden="true">P</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">POSS, 2 letters in place</span></li><li class="rung"><span class="tile tile--match" aria-hidden="true">P</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">POOS, 3 letters in place</span></li><li class="rung rung--reached"><span class="tile tile--match" aria-hidden="true">P</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">P</span><span class="visually-hidden">POOP, reached</span></li>
+        </ol>
+      </div>
+      <section class="keyboard" aria-label="Keyboard"><div class="keyboard-row"><button type="button" class="key">q</button><button type="button" class="key">w</button><button type="button" class="key">e</button><button type="button" class="key">r</button><button type="button" class="key">t</button><button type="button" class="key">y</button><button type="button" class="key">u</button><button type="button" class="key">i</button><button type="button" class="key">o</button><button type="button" class="key">p</button></div><div class="keyboard-row keyboard-row--middle"><button type="button" class="key">a</button><button type="button" class="key">s</button><button type="button" class="key">d</button><button type="button" class="key">f</button><button type="button" class="key">g</button><button type="button" class="key">h</button><button type="button" class="key">j</button><button type="button" class="key">k</button><button type="button" class="key">l</button></div><div class="keyboard-row"><button type="button" class="key key--wide key--enter">Enter</button><button type="button" class="key">z</button><button type="button" class="key">x</button><button type="button" class="key">c</button><button type="button" class="key">v</button><button type="button" class="key">b</button><button type="button" class="key">n</button><button type="button" class="key">m</button><button type="button" class="key key--wide" aria-label="Delete letter"><svg class="icon" aria-hidden="true"><use href="#i-backspace"/></svg></button></div></section>
+    </main>
+
+    <div class="sheet-scrim"></div>
+    <dialog class="sheet" open aria-labelledby="perfect-title">
+      <div class="sheet-header">
+        <div class="result">
+          <h2 class="verdict verdict--perfect" id="perfect-title">Perfect!</h2>
+          <p class="result-route">FUSE → POOP</p>
+          <p class="result-score"><span><strong>5 steps</strong>, par 5</span><span class="par-delta par-delta--even">On par</span></p>
+        </div>
+        <button type="button" class="sheet-close" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <section class="sheet-section" aria-labelledby="perfect-solution-title">
+        <h3 class="sheet-section-title" id="perfect-solution-title">A shortest ladder</h3>
+        <ol class="solution"><li class="solution-step"><span class="mini-word"><span class="mini-tile" aria-hidden="true">F</span><span class="mini-tile" aria-hidden="true">U</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">E</span></span><span class="visually-hidden">FUSE</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile" aria-hidden="true">F</span><span class="mini-tile" aria-hidden="true">U</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">FUSS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile" aria-hidden="true">U</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">PUSS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile" aria-hidden="true">S</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">POSS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile" aria-hidden="true">S</span></span><span class="visually-hidden">POOS</span></li><li class="solution-step"><span class="mini-word"><span class="mini-tile tile--match" aria-hidden="true">P</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile tile--match" aria-hidden="true">O</span><span class="mini-tile tile--match" aria-hidden="true">P</span></span><span class="visually-hidden">POOP</span></li></ol>
+      </section>
+      <div class="share-row">
+        <button type="button" class="button button--primary"><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>Share result</button>
+        <a class="button" href="#start"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg>Play unlimited</a>
+      </div>
+      <p class="countdown">Next puzzle in <time datetime="PT9H39M28S">9:39:28</time></p>
+      <section class="sheet-section" aria-labelledby="perfect-today-title">
+        <div class="sheet-section-head">
+          <h3 class="sheet-section-title" id="perfect-today-title">Today’s leaderboard</h3>
+          <span class="live-tag">Live</span>
+        </div>
+        <ol class="standings"><li class="standing"><span class="rank rank--first">1</span><img class="avatar" src="avatars/mira.svg" alt=""><span class="standing-name">mira</span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>0:48</span></li><li class="standing standing--you"><span class="rank">2</span><img class="avatar" src="avatars/jay.svg" alt=""><span class="standing-name">jay<span class="you-tag">You</span></span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>1:05</span></li><li class="standing"><span class="rank">3</span><img class="avatar" src="avatars/tomasz.svg" alt=""><span class="standing-name">tomasz</span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>1:32</span></li><li class="standing"><span class="rank">4</span><img class="avatar" src="avatars/priya.svg" alt=""><span class="standing-name">priya</span><span class="standing-steps">5 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>2:10</span></li><li class="standing"><span class="rank">5</span><img class="avatar" src="avatars/bex.svg" alt=""><span class="standing-name">bex</span><span class="standing-steps">6 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>3:41</span></li><li class="standing"><span class="rank">6</span><img class="avatar" src="avatars/ollie.svg" alt=""><span class="standing-name">ollie</span><span class="standing-steps">7 <span class="visually-hidden">steps</span></span><span class="standing-time"><span class="visually-hidden">in </span>2:02</span></li></ol>
+        <p class="footnote">12 anonymous players also solved #423.</p>
+      </section>
+      <p class="sheet-links"><a class="text-link" href="#stats">Your statistics</a><a class="text-link" href="#leaderboard">Full leaderboard</a></p>
+    </dialog>
+  </div>
+</section>
+<section class="proto-state" id="stats" aria-label="Statistics">
+  <div class="app app--play">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="play">
+      <div class="puzzle-heading">
+        <h1 class="puzzle-title">Daily #423</h1>
+        <p class="puzzle-date"><time datetime="2026-10-11">Sunday 11 October</time></p>
+
+      </div>
+      <div class="board">
+        <ol class="ladder" aria-label="Your ladder from FUSE to POOP">
+          <li class="rung rung--start"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">E</span><span class="visually-hidden">FUSE, start word</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile" aria-hidden="true">U</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FUSS</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">S</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOSS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">F</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">FOPS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">L</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile" aria-hidden="true">P</span><span class="tile" aria-hidden="true">S</span><span class="visually-hidden">LOPS, 1 letter in place</span></li><li class="rung"><span class="tile" aria-hidden="true">L</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">P</span><span class="visually-hidden">LOOP, 3 letters in place</span></li><li class="rung rung--reached"><span class="tile tile--match" aria-hidden="true">P</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">O</span><span class="tile tile--match" aria-hidden="true">P</span><span class="visually-hidden">POOP, reached</span></li>
+        </ol>
+      </div>
+      <section class="keyboard" aria-label="Keyboard"><div class="keyboard-row"><button type="button" class="key">q</button><button type="button" class="key">w</button><button type="button" class="key">e</button><button type="button" class="key">r</button><button type="button" class="key">t</button><button type="button" class="key">y</button><button type="button" class="key">u</button><button type="button" class="key">i</button><button type="button" class="key">o</button><button type="button" class="key">p</button></div><div class="keyboard-row keyboard-row--middle"><button type="button" class="key">a</button><button type="button" class="key">s</button><button type="button" class="key">d</button><button type="button" class="key">f</button><button type="button" class="key">g</button><button type="button" class="key">h</button><button type="button" class="key">j</button><button type="button" class="key">k</button><button type="button" class="key">l</button></div><div class="keyboard-row"><button type="button" class="key key--wide key--enter">Enter</button><button type="button" class="key">z</button><button type="button" class="key">x</button><button type="button" class="key">c</button><button type="button" class="key">v</button><button type="button" class="key">b</button><button type="button" class="key">n</button><button type="button" class="key">m</button><button type="button" class="key key--wide" aria-label="Delete letter"><svg class="icon" aria-hidden="true"><use href="#i-backspace"/></svg></button></div></section>
+    </main>
+
+    <div class="sheet-scrim"></div>
+    <dialog class="sheet" open aria-labelledby="stats-title">
+      <div class="sheet-header">
+        <h2 class="sheet-title" id="stats-title">Statistics</h2>
+        <button type="button" class="sheet-close" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </div>
+      <dl class="stats-figures">
+        <div class="stats-figure"><dt>Wins</dt><dd>23</dd></div>
+        <div class="stats-figure"><dt>Avg extra steps</dt><dd>0.65</dd></div>
+        <div class="stats-figure"><dt>Current streak</dt><dd>6</dd></div>
+        <div class="stats-figure"><dt>Best streak</dt><dd>11</dd></div>
+      </dl>
+      <section class="sheet-section distribution" aria-labelledby="dist-title">
+        <div class="sheet-section-head">
+          <h3 class="sheet-section-title" id="dist-title">Extra steps over par</h3>
+        </div>
+        <fieldset class="segmented">
+          <legend class="visually-hidden">Show distribution for</legend>
+          <label><input type="radio" name="dist" value="you" checked>You</label>
+          <label><input type="radio" name="dist" value="everyone">Everyone #423</label>
+        </fieldset>
+        <div class="dist-panel dist-panel--you">
+          <ol class="dist-list" aria-label="Your solves by extra steps"><li class="dist-row"><span class="dist-label">+0<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 100%">9</span></li><li class="dist-row dist-row--today"><span class="dist-label">+1<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 89%">8<span class="visually-hidden"> (today)</span></span></li><li class="dist-row"><span class="dist-label">+2<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 44%">4</span></li><li class="dist-row"><span class="dist-label">+3<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 11%">1</span></li><li class="dist-row"><span class="dist-label">+4<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 11%">1</span></li><li class="dist-row"><span class="dist-label">+5<span class="visually-hidden"> extra steps</span></span><span class="dist-bar" style="--share: 0%">0</span></li><li class="dist-row"><span class="dist-label">6+<span class="visually-hidden"> extra steps</span></span><span class="dist-bar" style="--share: 0%">0</span></li></ol>
+        </div>
+        <div class="dist-panel dist-panel--everyone">
+          <ol class="dist-list" aria-label="Everyone today by extra steps"><li class="dist-row"><span class="dist-label">+0<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 79%">11</span></li><li class="dist-row dist-row--today"><span class="dist-label">+1<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 100%">14<span class="visually-hidden"> (today)</span></span></li><li class="dist-row"><span class="dist-label">+2<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 50%">7</span></li><li class="dist-row"><span class="dist-label">+3<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 21%">3</span></li><li class="dist-row"><span class="dist-label">+4<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 7%">1</span></li><li class="dist-row"><span class="dist-label">+5<span class="visually-hidden"> extra steps</span></span><span class="dist-bar dist-bar--filled" style="--share: 7%">1</span></li><li class="dist-row"><span class="dist-label">6+<span class="visually-hidden"> extra steps</span></span><span class="dist-bar" style="--share: 0%">0</span></li></ol>
+        </div>
+        <p class="footnote dist-panel--you">Based on your 23 solves. Today is outlined.</p>
+        <p class="footnote dist-panel--everyone">37 players solved #423. Your +1 is outlined.</p>
+      </section>
+      <section class="sheet-section" aria-labelledby="compare-title">
+        <h3 class="sheet-section-title" id="compare-title">You finished 1 over par</h3>
+        <p class="footnote">30% of today’s players did better, 38% tied with you and 32% used more steps.</p>
+      </section>
+    </dialog>
+  </div>
+</section>
+<section class="proto-state" id="signup" aria-label="Sign up">
+  <div class="app">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#login" aria-label="Log in" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span class="nav-label" aria-hidden="true">Log in</span></a>
+      </nav>
+    </header>
+    <main class="page">
+      <div class="form-panel">
+        <div class="form-intro">
+          <svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg>
+          <h1 class="page-title">Sign up</h1>
+          <p class="page-lede">Your games on this device move to your account.</p>
+        </div>
+        <nav class="tabs" aria-label="Account"><a href="#login">Log in</a><a href="#signup" aria-current="page">Sign up</a></nav>
+        <form class="form-surface" action="#" method="post" enctype="multipart/form-data">
+          <div class="field">
+            <label for="su-username">Username</label>
+            <input type="text" id="su-username" name="username" value="mira" autocomplete="username" required aria-invalid="true" aria-describedby="su-username-error">
+            <p class="field-error" id="su-username-error"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>That username is taken. Try another.</p>
+          </div>
+          <div class="field">
+            <label for="su-password">Password</label>
+            <input type="password" id="su-password" name="password" autocomplete="new-password" minlength="10" required aria-describedby="su-password-hint">
+            <p class="field-hint" id="su-password-hint">At least 10 characters.</p>
+          </div>
+          <fieldset class="field">
+            <legend>Profile picture <span class="field-optional">(optional)</span></legend>
+            <div class="avatar-picker">
+              <img class="avatar" src="avatars/jay.svg" alt="Preview of your picture">
+              <input type="file" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp" aria-label="Choose a picture" aria-describedby="su-avatar-hint">
+            </div>
+            <p class="field-hint" id="su-avatar-hint">PNG, JPEG, GIF or WebP up to 2 MB. We crop it to a square.</p>
+          </fieldset>
+          <button type="submit" class="button button--primary button--block">Create account</button>
+        </form>
+        <p class="form-switch">Already playing with friends? <a class="text-link" href="#login">Log in</a></p>
+      </div>
+    </main>
+  </div>
+</section>
+<section class="proto-state" id="login" aria-label="Log in">
+  <div class="app">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#login" aria-label="Log in" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span class="nav-label" aria-hidden="true">Log in</span></a>
+      </nav>
+    </header>
+    <main class="page">
+      <div class="form-panel">
+        <div class="form-intro">
+          <svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg>
+          <h1 class="page-title">Log in</h1>
+          <p class="page-lede">Accounts are optional. Log in to join the leaderboard.</p>
+        </div>
+        <nav class="tabs" aria-label="Account"><a href="#login" aria-current="page">Log in</a><a href="#signup">Sign up</a></nav>
+        <form class="form-surface" action="#" method="post">
+          <div class="field">
+            <label for="li-username">Username</label>
+            <input type="text" id="li-username" name="username" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="li-password">Password</label>
+            <input type="password" id="li-password" name="password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="button button--primary button--block">Log in</button>
+        </form>
+        <p class="form-switch">Forgot your password? Ask the admin for a reset link.</p>
+      </div>
+    </main>
+  </div>
+</section>
+<section class="proto-state" id="leaderboard" aria-label="Leaderboard, today">
+  <div class="app">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="page">
+      <h1 class="page-title">Leaderboard</h1>
+      <nav class="tabs" aria-label="Leaderboard period"><a href="#leaderboard" aria-current="page">Today</a><a href="#leaderboard-all">All-time</a></nav>
+      <table class="board-table">
+        <caption>Daily #423, FUSE → POOP. Par 5. Ranked by steps, then solve time.</caption>
+        <thead><tr><th scope="col"><span class="visually-hidden">Rank</span>#</th><th scope="col">Player</th><th scope="col" class="num">Steps</th><th scope="col" class="num">Time</th></tr></thead>
+        <tbody><tr><td><span class="rank rank--first">1</span></td><td><span class="player"><img class="avatar" src="avatars/mira.svg" alt="">mira</span></td><td class="num">5 <span class="steps-delta">par</span></td><td class="num">0:48</td></tr><tr><td><span class="rank">2</span></td><td><span class="player"><img class="avatar" src="avatars/tomasz.svg" alt="">tomasz</span></td><td class="num">5 <span class="steps-delta">par</span></td><td class="num">1:32</td></tr><tr><td><span class="rank">3</span></td><td><span class="player"><img class="avatar" src="avatars/priya.svg" alt="">priya</span></td><td class="num">5 <span class="steps-delta">par</span></td><td class="num">2:10</td></tr><tr class="row--you"><td><span class="rank">4</span></td><td><span class="player"><img class="avatar" src="avatars/jay.svg" alt="">jay<span class="you-tag">You</span></span></td><td class="num">6 <span class="steps-delta">+1</span></td><td class="num">1:05</td></tr><tr><td><span class="rank">5</span></td><td><span class="player"><img class="avatar" src="avatars/bex.svg" alt="">bex</span></td><td class="num">6 <span class="steps-delta">+1</span></td><td class="num">3:41</td></tr><tr><td><span class="rank">6</span></td><td><span class="player"><img class="avatar" src="avatars/ollie.svg" alt="">ollie</span></td><td class="num">7 <span class="steps-delta">+2</span></td><td class="num">2:02</td></tr></tbody>
+      </table>
+      <p class="footnote">12 anonymous players also solved today. They count in the everyone distribution but are not listed by name.</p>
+    </main>
+  </div>
+</section>
+<section class="proto-state" id="leaderboard-all" aria-label="Leaderboard, all-time">
+  <div class="app">
+    <header class="masthead">
+      <a class="brand" href="#start"><svg class="brand-mark" aria-hidden="true"><use href="#mascot"/></svg><span class="brand-name">Poople</span></a>
+      <nav class="masthead-nav" aria-label="Main">
+        <a class="nav-link" href="#start" aria-label="Unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"/></svg><span class="nav-label" aria-hidden="true">Unlimited</span></a>
+        <a class="nav-link" href="#leaderboard" aria-label="Leaderboard" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-podium"/></svg><span class="nav-label" aria-hidden="true">Leaderboard</span></a>
+        <a class="nav-link" href="#stats" aria-label="Statistics"><svg class="icon" aria-hidden="true"><use href="#i-stats"/></svg><span class="nav-label" aria-hidden="true">Stats</span></a>
+        <a class="nav-link" href="#signup" aria-label="Your account, jay"><img class="avatar" src="avatars/jay.svg" alt=""><span class="nav-label" aria-hidden="true">jay</span></a>
+      </nav>
+    </header>
+    <main class="page">
+      <h1 class="page-title">Leaderboard</h1>
+      <nav class="tabs" aria-label="Leaderboard period"><a href="#leaderboard">Today</a><a href="#leaderboard-all" aria-current="page">All-time</a></nav>
+      <table class="board-table">
+        <caption>Ranked by average steps over par. Players need at least 5 daily games.</caption>
+        <thead><tr><th scope="col"><span class="visually-hidden">Rank</span>#</th><th scope="col">Player</th><th scope="col" class="num">Streak</th><th scope="col" class="num">Best</th><th scope="col" class="num">Avg over par</th></tr></thead>
+        <tbody><tr><td><span class="rank rank--first">1</span></td><td><span class="player"><img class="avatar" src="avatars/tomasz.svg" alt="">tomasz</span></td><td class="num">14</td><td class="num">31</td><td class="num">0.21</td></tr><tr><td><span class="rank">2</span></td><td><span class="player"><img class="avatar" src="avatars/mira.svg" alt="">mira</span></td><td class="num">9</td><td class="num">22</td><td class="num">0.34</td></tr><tr class="row--you"><td><span class="rank">3</span></td><td><span class="player"><img class="avatar" src="avatars/jay.svg" alt="">jay<span class="you-tag">You</span></span></td><td class="num">6</td><td class="num">11</td><td class="num">0.65</td></tr><tr><td><span class="rank">4</span></td><td><span class="player"><img class="avatar" src="avatars/priya.svg" alt="">priya</span></td><td class="num">2</td><td class="num">17</td><td class="num">0.72</td></tr><tr><td><span class="rank">5</span></td><td><span class="player"><img class="avatar" src="avatars/bex.svg" alt="">bex</span></td><td class="num">0</td><td class="num">8</td><td class="num">1.10</td></tr><tr><td><span class="rank">6</span></td><td><span class="player"><img class="avatar" src="avatars/ollie.svg" alt="">ollie</span></td><td class="num">3</td><td class="num">5</td><td class="num">1.42</td></tr></tbody>
+      </table>
+    </main>
+  </div>
+</section>
+<nav class="proto-nav" aria-label="Prototype states">
+  <h2>Prototype states</h2>
+  <ul><li><a href="#start">Start of a puzzle</a></li><li><a href="#playing">Mid-game</a></li><li><a href="#rejected">Rejected guess</a></li><li><a href="#finish">Finish sheet</a></li><li><a href="#finish-perfect">Finish sheet, on par</a></li><li><a href="#stats">Statistics</a></li><li><a href="#signup">Sign up</a></li><li><a href="#login">Log in</a></li><li><a href="#leaderboard">Leaderboard, today</a></li><li><a href="#leaderboard-all">Leaderboard, all-time</a></li></ul>
+  <div class="proto-theme" role="group" aria-label="Theme">
+    <span>Theme</span>
+    <button type="button" data-theme-choice="system">System</button>
+    <button type="button" data-theme-choice="light">Light</button>
+    <button type="button" data-theme-choice="dark">Dark</button>
+  </div>
+  <p>Players, avatars, times and statistics are synthetic sample data.</p>
+</nav>
+<script>
+  (() => {
+    const root = document.documentElement;
+    const buttons = document.querySelectorAll('[data-theme-choice]');
+    const sync = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String((root.dataset.theme || 'system') === b.dataset.themeChoice)));
+    buttons.forEach((b) => b.addEventListener('click', () => {
+      const choice = b.dataset.themeChoice;
+      if (choice === 'system') { delete root.dataset.theme; localStorage.removeItem('poople-theme'); }
+      else { root.dataset.theme = choice; localStorage.setItem('poople-theme', choice); }
+      sync();
+    }));
+    sync();
+  })();
+</script>
+</body>
+</html>
