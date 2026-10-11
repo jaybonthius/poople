@@ -9,7 +9,7 @@ import (
 // Markup and class names follow the sign-up and log-in states of docs/design/prototype/index.html.
 
 templ LoginPage() {
-	@core.Shell("Log in") {
+	@core.Shell("Log in", nil) {
 		@formPanel("Log in", "Accounts are optional. Log in to join the leaderboard.", "/login") {
 			@accountForm("/login", "") {
 				@usernameField(false)
@@ -21,7 +21,7 @@ templ LoginPage() {
 }
 
 templ SignUpPage() {
-	@core.Shell("Sign up") {
+	@core.Shell("Sign up", nil) {
 		@formPanel("Sign up", "Your games on this device move to your account.", "/signup") {
 			@accountForm("/signup", "") {
 				@usernameField(true)
@@ -33,7 +33,7 @@ templ SignUpPage() {
 }
 
 templ SetupPage(token string) {
-	@core.Shell("Set up Poople") {
+	@core.Shell("Set up Poople", nil) {
 		@formPanel("Set up Poople", "Create the admin account. This private link expires after 15 minutes and works only once.", "") {
 			@accountForm("/setup", token) {
 				@usernameField(true)
@@ -45,7 +45,7 @@ templ SetupPage(token string) {
 
 // ResetPage offers a new password for username, or explains an unusable link when token is empty.
 templ ResetPage(token string, username string) {
-	@core.Shell("New password") {
+	@core.Shell("New password", nil) {
 		if token == "" {
 			@formPanel("Reset link unavailable", "This link has expired or was already used. Ask the admin for a new one.", "") {
 				<p class="form-switch"><a class="text-link" href="/login">Log in</a></p>

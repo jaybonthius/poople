@@ -12,6 +12,7 @@ import (
 	"poople/web/core"
 	"poople/web/features/auth"
 	"poople/web/features/play"
+	"poople/web/services/game"
 	"poople/web/services/identity"
 
 	"github.com/go-chi/chi/v5"
@@ -27,8 +28,8 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 	if maxFPS <= 0 || time.Second/time.Duration(maxFPS) == 0 {
 		return nil, "", errors.New("invalid UI frame rate")
 	}
-	// The game service supplies the log-in merge hook once games exist.
-	users, err := identity.New(ctx, backend.Database(), identity.Cookies{Secure: secureCookies}, nil)
+	// Logging in moves this browser's anonymous games into the account.
+	users, err := identity.New(ctx, backend.Database(), identity.Cookies{Secure: secureCookies}, game.MergePlayers)
 	if err != nil {
 		return nil, "", fmt.Errorf("initialize identity: %w", err)
 	}
