@@ -24,7 +24,7 @@ func newHandler(t *testing.T) http.Handler {
 			t.Error(err)
 		}
 	})
-	handler, err := web.NewApp(t.Context(), backend, false, 30)
+	handler, _, err := web.NewApp(t.Context(), backend, false, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestNewAppRejectsInvalidFrameRate(t *testing.T) {
 	}
 	defer backend.Close()
 	for _, fps := range []int{0, -1, int(time.Second) + 1} {
-		if _, err := web.NewApp(t.Context(), backend, false, fps); err == nil {
+		if _, _, err := web.NewApp(t.Context(), backend, false, fps); err == nil {
 			t.Fatalf("frame rate %d accepted", fps)
 		}
 	}

@@ -142,7 +142,7 @@ func TestOpenReloadDrainsBeforeServeReturns(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer backend.Close()
-	handler, err := web.NewApp(ctx, backend, false, 30)
+	handler, _, err := web.NewApp(ctx, backend, false, 30)
 	if err != nil {
 		t.Fatal(err)
 	}

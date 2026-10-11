@@ -4,12 +4,15 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"poople/app"
 	"poople/web/core"
+	"poople/web/features/auth"
 	"poople/web/features/play"
+	"poople/web/services/identity"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -18,10 +21,20 @@ import (
 const BodyLimit = 16 << 10
 
 // NewApp borrows the backend's storage. secureCookies requires HTTPS for the
-// session cookies set by the identity service.
-func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFPS int) (http.Handler, error) {
+// session cookie. The returned setup token is for the operator only and is empty
+// once an account exists.
+func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFPS int) (http.Handler, string, error) {
 	if maxFPS <= 0 || time.Second/time.Duration(maxFPS) == 0 {
-		return nil, errors.New("invalid UI frame rate")
+		return nil, "", errors.New("invalid UI frame rate")
+	}
+	// The game service supplies the log-in merge hook once games exist.
+	users, err := identity.New(ctx, backend.Database(), identity.Cookies{Secure: secureCookies}, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("initialize identity: %w", err)
+	}
+	setup, token, err := identity.NewSetup(ctx, users)
+	if err != nil {
+		return nil, "", fmt.Errorf("initialize admin setup: %w", err)
 	}
 	router := chi.NewRouter()
 	// No request logger: setup and reset URLs and account bodies contain secrets.
@@ -40,6 +53,7 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 			next.ServeHTTP(w, r)
 		})
 	})
+	router.Use(identity.WithPlayer(users, identityErrorPage))
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if navigationNotFound(r) {
 			core.WriteErrorPage(w, r, http.StatusNotFound)
@@ -48,6 +62,7 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 		http.NotFound(w, r)
 	})
 	core.Routes(ctx, router)
+	auth.Routes(router, users, setup)
 	play.Routes(ctx, router, backend.Database(), maxFPS)
-	return router, nil
+	return router, token, nil
 }

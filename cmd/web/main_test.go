@@ -115,9 +115,13 @@ func TestWebBinaryServesAndExitsOnSIGTERM(t *testing.T) {
 		}
 	}()
 	ready := make(chan string, 1)
+	setupLink := ""
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
+			if link, ok := strings.CutPrefix(scanner.Text(), "Admin setup (15 minutes): "); ok {
+				setupLink = link
+			}
 			if addr, ok := strings.CutPrefix(scanner.Text(), "Listening on "); ok {
 				ready <- addr
 				io.Copy(io.Discard, stderr)
@@ -137,6 +141,17 @@ func TestWebBinaryServesAndExitsOnSIGTERM(t *testing.T) {
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
+	if !strings.HasPrefix(setupLink, "/setup?token=") {
+		t.Fatalf("empty database printed no admin setup link: %q", setupLink)
+	}
+	setup, err := client.Get("http://" + addr + setupLink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setup.Body.Close()
+	if setup.StatusCode != 200 {
+		t.Fatalf("printed setup link status=%d", setup.StatusCode)
+	}
 	resp, err := client.Get("http://" + addr + "/")
 	if err != nil {
 		t.Fatal(err)

@@ -1,0 +1,205 @@
+package auth
+
+import (
+	"poople/web/core"
+	"poople/web/services/identity"
+	"strconv"
+)
+
+// Markup and class names follow the sign-up and log-in states of docs/design/prototype/index.html.
+
+templ LoginPage() {
+	@core.Shell("Log in") {
+		@formPanel("Log in", "Accounts are optional. Log in to join the leaderboard.", "/login") {
+			@accountForm("/login", "") {
+				@usernameField(false)
+				@passwordField(false)
+			}
+			<p class="form-switch">Forgot your password? Ask the admin for a reset link.</p>
+		}
+	}
+}
+
+templ SignUpPage() {
+	@core.Shell("Sign up") {
+		@formPanel("Sign up", "Your games on this device move to your account.", "/signup") {
+			@accountForm("/signup", "") {
+				@usernameField(true)
+				@passwordField(true)
+			}
+			<p class="form-switch">Already playing with friends? <a class="text-link" href="/login">Log in</a></p>
+		}
+	}
+}
+
+templ SetupPage(token string) {
+	@core.Shell("Set up Poople") {
+		@formPanel("Set up Poople", "Create the admin account. This private link expires after 15 minutes and works only once.", "") {
+			@accountForm("/setup", token) {
+				@usernameField(true)
+				@passwordField(true)
+			}
+		}
+	}
+}
+
+// ResetPage offers a new password for username, or explains an unusable link when token is empty.
+templ ResetPage(token string, username string) {
+	@core.Shell("New password") {
+		if token == "" {
+			@formPanel("Reset link unavailable", "This link has expired or was already used. Ask the admin for a new one.", "") {
+				<p class="form-switch"><a class="text-link" href="/login">Log in</a></p>
+			}
+		} else {
+			@formPanel("New password", "Choose a new password for "+username+".", "") {
+				@accountForm("/reset", token) {
+					@passwordField(true)
+				}
+			}
+		}
+	}
+}
+
+templ formPanel(title string, lede string, tab string) {
+	<main id="main" class="page">
+		<div class="form-panel">
+			<div class="form-intro">
+				<svg class="brand-mark" aria-hidden="true"><use href="#mascot"></use></svg>
+				<h1 class="page-title">{ title }</h1>
+				<p class="page-lede">{ lede }</p>
+			</div>
+			if tab != "" {
+				<nav class="tabs" aria-label="Account">
+					<a href="/login" if tab == "/login" { aria-current="page" }>Log in</a>
+					<a href="/signup" if tab == "/signup" { aria-current="page" }>Sign up</a>
+				</nav>
+			}
+			{ children... }
+		</div>
+	</main>
+}
+
+templ accountForm(action string, token string) {
+	<form
+		class="form-surface"
+		method="post"
+		action={ templ.SafeURL(action) }
+		data-signals={ formSignals(action) }
+		data-indicator:_busy
+		data-attr:aria-busy="$_busy ? 'true' : 'false'"
+		data-on:datastar-fetch="if (evt.detail.el === el && evt.detail.type === 'error') $_authError = 'Request failed. Try again.'"
+		data-on:submit={ accountAction(action) }
+	>
+		if action == "/setup" {
+			<input type="hidden" name="setupToken" value={ token }/>
+		}
+		if action == "/reset" {
+			<input type="hidden" name="resetToken" value={ token }/>
+		}
+		{ children... }
+		<p class="field-error" id="auth-error" role="alert" data-show="$_authError" style="display: none">
+			<svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+			<span data-text="$_authError"></span>
+		</p>
+		<button
+			type="submit"
+			class="button button--primary button--block"
+			data-attr:disabled="$_busy"
+			data-text={ "$_busy ? '" + busyLabel(action) + "' : '" + submitLabel(action) + "'" }
+		>{ submitLabel(action) }</button>
+	</form>
+}
+
+templ usernameField(creating bool) {
+	<div class="field">
+		<label for="username">Username</label>
+		<input
+			type="text"
+			id="username"
+			name="username"
+			data-bind:username
+			autocomplete="username"
+			autocapitalize="none"
+			spellcheck="false"
+			required
+			if creating {
+				minlength="3"
+				maxlength="24"
+				pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,23}"
+				aria-describedby="username-hint auth-error"
+			} else {
+				maxlength="64"
+				aria-describedby="auth-error"
+			}
+		/>
+		if creating {
+			<p class="field-hint" id="username-hint">3–24 letters, numbers, dots, underscores or hyphens.</p>
+		}
+	</div>
+}
+
+templ passwordField(creating bool) {
+	<div class="field">
+		<label for="password">Password</label>
+		<input
+			type="password"
+			id="password"
+			name="password"
+			data-bind:password
+			required
+			maxlength={ strconv.Itoa(identity.PasswordMaxLength) }
+			if creating {
+				autocomplete="new-password"
+				minlength={ strconv.Itoa(identity.PasswordMinLength) }
+				aria-describedby="password-hint auth-error"
+			} else {
+				autocomplete="current-password"
+				aria-describedby="auth-error"
+			}
+		/>
+		if creating {
+			<p class="field-hint" id="password-hint">At least { strconv.Itoa(identity.PasswordMinLength) } characters.</p>
+		}
+	</div>
+}
+
+func formSignals(action string) string {
+	if action == "/reset" {
+		return "{password: '', _authError: ''}"
+	}
+	return "{username: '', password: '', _authError: ''}"
+}
+
+func submitLabel(action string) string {
+	switch action {
+	case "/login":
+		return "Log in"
+	case "/reset":
+		return "Save password"
+	default:
+		return "Create account"
+	}
+}
+
+func busyLabel(action string) string {
+	switch action {
+	case "/login":
+		return "Logging in…"
+	case "/reset":
+		return "Saving…"
+	default:
+		return "Creating account…"
+	}
+}
+
+// accountAction posts only the form's own fields; the server answers with a redirect or an error signal.
+func accountAction(action string) string {
+	payload := "username: el.elements.username.value, password: el.elements.password.value"
+	switch action {
+	case "/setup":
+		payload += ", setupToken: el.elements.setupToken.value"
+	case "/reset":
+		payload = "password: el.elements.password.value, resetToken: el.elements.resetToken.value"
+	}
+	return "if (!$_busy) { $_authError = ''; @post(" + strconv.Quote(action) + ", {retry: 'never', payload: {" + payload + "}}).catch(() => { $_authError = 'Connection failed. Try again.' }) }"
+}

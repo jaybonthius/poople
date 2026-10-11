@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"poople/lib/errorlog"
+	"poople/web/services/identity"
 
 	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
@@ -18,7 +19,8 @@ import (
 // snapshot returns the view and its next-change channel from the same state snapshot.
 func Stream(ctx context.Context, w http.ResponseWriter, r *http.Request, maxFPS int, snapshot func() (templ.Component, <-chan struct{}, error)) (err error) {
 	defer func() {
-		if ctx.Err() == nil {
+		// Identity refusals end a stream normally: the session was revoked or lost access.
+		if ctx.Err() == nil && !errors.Is(err, identity.ErrInvalidSession) && !errors.Is(err, identity.ErrAdminRequired) {
 			errorlog.Request(r, "stream live view", err)
 		}
 	}()

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"poople/web/services/identity"
+
 	"github.com/a-h/templ"
 )
 
@@ -18,7 +20,7 @@ func TestStreamLogsDroppedSnapshotFailureOnlyOnce(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&output, nil)))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 	failure := errors.New("snapshot storage failed")
-	for _, err := range []error{context.Canceled, failure} {
+	for _, err := range []error{identity.ErrInvalidSession, identity.ErrAdminRequired, context.Canceled, failure} {
 		output.Reset()
 		got := Stream(t.Context(), httptest.NewRecorder(), httptest.NewRequest("GET", "/play/state?token=private-query", nil), 30, func() (templ.Component, <-chan struct{}, error) { return nil, nil, err })
 		if !errors.Is(got, err) {

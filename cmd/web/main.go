@@ -65,9 +65,14 @@ func run(ctx context.Context, args []string, operator io.Writer) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, backend.Close()) }()
-	handler, err := web.NewApp(ctx, backend, *secure, *uiFPS)
+	handler, token, err := web.NewApp(ctx, backend, *secure, *uiFPS)
 	if err != nil {
 		return err
+	}
+	if token != "" {
+		if _, err := fmt.Fprintf(operator, "Admin setup (15 minutes): /setup?token=%s\n", token); err != nil {
+			return err
+		}
 	}
 	if _, err := fmt.Fprintf(operator, "Listening on %s\n", listener.Addr()); err != nil {
 		return err

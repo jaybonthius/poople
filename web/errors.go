@@ -5,7 +5,18 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"poople/web/core"
 )
+
+// identityErrorPage renders the shell error page for browser navigations only.
+func identityErrorPage(w http.ResponseWriter, r *http.Request, status int) bool {
+	if !navigationNotFound(r) {
+		return false
+	}
+	core.WriteErrorPage(w, r, status)
+	return true
+}
 
 // navigationNotFound reports whether a missing path was a browser page
 // navigation, which gets the HTML error page; streams, assets and commands get plain text.
