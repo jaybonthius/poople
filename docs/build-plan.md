@@ -29,7 +29,7 @@ Features never import each other; shared behaviour is a service passed in from `
 
 ## Store
 
-`store.Open(ctx, dataDir)` runs embedded Goose migrations on a `database/sql` + `modernc.org/sqlite` connection, closes it, then opens `github.com/delaneyj/toolbelt/db.Database` (one write connection, CPU-sized read pool) on `poople.sqlite`. Adopt getajob's `application_id` ownership check and pragma read-back (WAL, `synchronous = NORMAL`, `foreign_keys = ON`, busy timeout). Expose `Read(ctx, func(*sqlite.Conn) error)` and `Write(ctx, func(*sqlite.Conn) error)` (immediate transaction). One migration history in `store/migrations`; one `store/queries.sql` per concern is fine (`store/queries/*.sql`); generated code only in `store/zz`.
+`store.Open(ctx, dataDir)` runs embedded Goose migrations on a `database/sql` + `modernc.org/sqlite` connection, closes it, then opens `github.com/delaneyj/toolbelt/db.Database` (one write connection, CPU-sized read pool) on `poople.sqlite`. Follow northstar's `lib/db/db.go` `InitDatabase` shape and read back the pragmas (WAL, `synchronous = NORMAL`, `foreign_keys = ON`, busy timeout). No `application_id` ownership check: toolbelt's built-in migrator requires `application_id = 0`, and the data directory is dedicated to poople. Expose `Read(ctx, func(*sqlite.Conn) error)` and `Write(ctx, func(*sqlite.Conn) error)` (immediate transaction). One migration history in `store/migrations`; one `store/queries.sql` per concern is fine (`store/queries/*.sql`); generated code only in `store/zz`.
 
 ## Word data (versioned)
 
