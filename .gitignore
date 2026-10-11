@@ -1,0 +1,18 @@
+/bin/
+/.tools/
+/.live/
+/.task/
+/.dev/
+# Generated web bundles; keep vendored assets and notices tracked.
+/web/**/static/styles/
+/web/**/static/web-components/
+/web/**/static/**/*.map
+/data/
+/artifacts/
+/.pi/subagents/
+/.pi-subagents/
+node_modules/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+/.env
