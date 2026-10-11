@@ -62,8 +62,9 @@ func TestOpenMigratesAndConfiguresConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := scalar(t, s, "SELECT max(version_id) FROM goose_db_version"), strconv.Itoa(len(entries)); got != want {
-		t.Fatalf("goose version=%s, want %s", got, want)
+	// Count applied versions rather than take the highest, so gaps in numbering pass.
+	if got, want := scalar(t, s, "SELECT count(DISTINCT version_id) FROM goose_db_version WHERE version_id > 0"), strconv.Itoa(len(entries)); got != want {
+		t.Fatalf("applied migrations=%s, want %s", got, want)
 	}
 	if got := scalar(t, s, "PRAGMA journal_mode"); got != "wal" {
 		t.Fatalf("read connection journal_mode=%s", got)
