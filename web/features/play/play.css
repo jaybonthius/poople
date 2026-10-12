@@ -1,4 +1,4 @@
-/* Play page: the share row, the finish sheet's focus, blank avatars and the reopen-result link. */
+/* Play page: the share row, the finish sheet's focus and the reopen-result link. */
 
 @layer feature {
   /* share-result renders its button in light DOM, so the host takes the button's place in .share-row.
@@ -25,17 +25,6 @@
      users land in it; the sheet itself needs no focus ring. */
   #finish:focus-visible {
     outline: none;
-  }
-
-  .avatar--blank {
-    display: grid;
-    place-items: center;
-    color: var(--ink-muted);
-  }
-
-  .avatar--blank .icon {
-    inline-size: 1.125rem;
-    block-size: 1.125rem;
   }
 
   .result-link {
