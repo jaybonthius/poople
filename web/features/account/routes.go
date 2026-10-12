@@ -1,4 +1,4 @@
-// Package account serves a signed-in player's profile picture and password.
+// Package account serves a signed-in player's username, profile picture and password.
 package account
 
 import (
@@ -27,11 +27,15 @@ import (
 // web/app.go applies it to that route only.
 const AvatarBodyLimit = identity.AvatarMaxBytes + 64<<10
 
-const maxPasswordSignalBytes = 4 << 10
+const maxSignalBytes = 4 << 10
 
 type handlers struct {
 	users   *identity.Service
 	limiter *httprate.RateLimiter
+}
+
+type usernameChange struct {
+	Username string `json:"username"`
 }
 
 type passwordChange struct {
@@ -63,6 +67,7 @@ func Routes(ctx context.Context, router chi.Router, users *identity.Service, max
 		})
 		router.Post("/account/avatar", h.uploadAvatar)
 		router.Post("/account/avatar/remove", h.removeAvatar)
+		router.Post("/account/username", h.changeUsername)
 		router.Post("/account/password", h.changePassword)
 	})
 }
@@ -171,19 +176,58 @@ func (h *handlers) removeAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// readSignals reads a bounded JSON command body; account commands accept nothing else.
+func readSignals(w http.ResponseWriter, r *http.Request, signals any) error {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
+		return errors.New("account commands require JSON")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxSignalBytes)
+	return datastar.ReadSignals(r, signals)
+}
+
+// changeUsername renames the account. Like the password form, its result is
+// transient form feedback; the live views show the new name everywhere.
+func (h *handlers) changeUsername(w http.ResponseWriter, r *http.Request) {
+	var signals usernameChange
+	if err := readSignals(w, r, &signals); err != nil {
+		usernameError(w, r, "", "Invalid request. Try again.")
+		return
+	}
+	// Limit by client, like the other account commands.
+	if h.limiter.OnLimit(w, r, "username:"+core.ClientKey(r)) {
+		usernameError(w, r, "", "Too many attempts. Wait one minute and try again.")
+		return
+	}
+	username, err := h.users.ChangeUsername(r.Context(), signedIn(r).ID, signals.Username)
+	switch {
+	case err == nil:
+		patchSignals(w, r, map[string]string{"_username": username, "_usernameError": "", "_usernameField": "", "_usernameNotice": "Username saved."})
+	case errors.Is(err, identity.ErrUsernameTaken):
+		usernameError(w, r, "username", "That username is taken. Try another.")
+	case errors.Is(err, identity.ErrUsernameInvalid):
+		usernameError(w, r, "username", "Username must be 3–24 letters, numbers, dots, underscores or hyphens, starting with a letter or number.")
+	case errors.Is(err, identity.ErrAccountNotFound):
+		navigate(w, r, "/login")
+	default:
+		errorlog.Request(r, "change username", err)
+		usernameError(w, r, "", "Unable to change your username. Try again.")
+	}
+}
+
+// usernameError shows message under the username form. field is "username"
+// when the message is about the name itself, which the page marks invalid and
+// focuses, or "" for the whole form.
+func usernameError(w http.ResponseWriter, r *http.Request, field, message string) {
+	patchSignals(w, r, map[string]string{"_usernameNotice": "", "_usernameError": message, "_usernameField": field})
+}
+
 // changePassword keeps this browser's session and revokes the account's others.
 // Its result is transient form feedback, not a view: the fields clear and a
 // notice or error appears.
 func (h *handlers) changePassword(w http.ResponseWriter, r *http.Request) {
 	var signals passwordChange
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err == nil && mediaType == "application/json" {
-		r.Body = http.MaxBytesReader(w, r.Body, maxPasswordSignalBytes)
-		err = datastar.ReadSignals(r, &signals)
-	} else {
-		err = errors.New("password change requires JSON")
-	}
-	if err != nil {
+	if err := readSignals(w, r, &signals); err != nil {
 		passwordError(w, r, "Invalid request. Try again.")
 		return
 	}
@@ -192,7 +236,7 @@ func (h *handlers) changePassword(w http.ResponseWriter, r *http.Request) {
 		passwordError(w, r, "Too many attempts. Wait one minute and try again.")
 		return
 	}
-	err = h.users.ChangePassword(r.Context(), identity.SessionToken(r), signals.CurrentPassword, signals.NewPassword)
+	err := h.users.ChangePassword(r.Context(), identity.SessionToken(r), signals.CurrentPassword, signals.NewPassword)
 	switch {
 	case err == nil:
 		patchSignals(w, r, map[string]string{"_currentPassword": "", "_newPassword": "", "_passwordError": "",

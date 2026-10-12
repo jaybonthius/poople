@@ -25,6 +25,9 @@ FROM accounts WHERE player_id = @player_id;
 -- name: SetAccountPassword :exec
 UPDATE accounts SET password_hash = @password_hash WHERE id = @id;
 
+-- name: SetAccountUsername :exec
+UPDATE accounts SET username = @username WHERE id = @id;
+
 -- name: CreateSession :exec
 INSERT INTO sessions (token_hash, player_id, created_at, expires_at)
 VALUES (@token_hash, @player_id, @created_at, @expires_at);

@@ -23,12 +23,13 @@ templ State(account *identity.Account) {
 }
 
 // View renders <main> from the account's stored state. Form feedback lives in
-// local signals that survive the morph.
+// local signals that survive the morph; the username field's signal starts
+// from the stored name, so a morph keeps what the player is typing.
 templ View(account *identity.Account) {
 	<main
 		id="main"
 		class="page"
-		data-signals__ifmissing="{_avatarError: '', _avatarBusy: false, _passwordBusy: false, _currentPassword: '', _newPassword: '', _passwordError: '', _passwordNotice: '', _logoutError: ''}"
+		data-signals__ifmissing="{_avatarError: '', _avatarBusy: false, _usernameBusy: false, _usernameError: '', _usernameField: '', _usernameNotice: '', _passwordBusy: false, _currentPassword: '', _newPassword: '', _passwordError: '', _passwordNotice: '', _logoutError: ''}"
 	>
 		<div class="form-panel">
 			<div class="form-intro">
@@ -80,6 +81,43 @@ templ View(account *identity.Account) {
 						data-on:click="$_avatarError = ''; @post('/account/avatar/remove', {retry: 'never', payload: {}}).catch(() => { $_avatarError = 'Connection failed. Try again.' })"
 					>Remove picture</button>
 				}
+			</form>
+			<form
+				class="form-surface"
+				method="post"
+				action="/account/username"
+				data-indicator:_username-busy
+				data-attr:aria-busy="$_usernameBusy ? 'true' : 'false'"
+				data-on:submit="if (!$_usernameBusy) { $_usernameError = ''; $_usernameField = ''; $_usernameNotice = ''; @post('/account/username', {retry: 'never', payload: {username: $_username}}).catch(() => { $_usernameError = 'Connection failed. Try again.' }) }"
+				aria-labelledby="username-title"
+			>
+				<h2 class="account-section-title" id="username-title">Change username</h2>
+				<div class="field">
+					<label for="account-username">Username</label>
+					<input
+						type="text"
+						id="account-username"
+						value={ account.Username }
+						data-bind:_username
+						data-attr:aria-invalid="$_usernameField === 'username' ? 'true' : false"
+						data-effect="$_usernameError && $_usernameField === 'username' && el.focus()"
+						autocomplete="username"
+						autocapitalize="none"
+						spellcheck="false"
+						required
+						minlength="3"
+						maxlength="24"
+						pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,23}"
+						aria-describedby="username-hint username-error"
+					/>
+					<p class="field-hint" id="username-hint">3–24 letters, numbers, dots, underscores or hyphens. You log in with it.</p>
+				</div>
+				<p class="field-error" id="username-error" role="alert" data-show="$_usernameError" style="display: none">
+					<svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+					<span data-text="$_usernameError"></span>
+				</p>
+				<p class="field-notice" role="status" data-text="$_usernameNotice"></p>
+				<button type="submit" class="button button--primary button--block" data-attr:disabled="$_usernameBusy" data-text="$_usernameBusy ? 'Saving…' : 'Save username'">Save username</button>
 			</form>
 			<form
 				class="form-surface"

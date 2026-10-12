@@ -103,7 +103,8 @@ func State(account *identity.Account) templ.Component {
 }
 
 // View renders <main> from the account's stored state. Form feedback lives in
-// local signals that survive the morph.
+// local signals that survive the morph; the username field's signal starts
+// from the stored name, so a morph keeps what the player is typing.
 func View(account *identity.Account) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -125,7 +126,7 @@ func View(account *identity.Account) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main id=\"main\" class=\"page\" data-signals__ifmissing=\"{_avatarError: '', _avatarBusy: false, _passwordBusy: false, _currentPassword: '', _newPassword: '', _passwordError: '', _passwordNotice: '', _logoutError: ''}\"><div class=\"form-panel\"><div class=\"form-intro\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main id=\"main\" class=\"page\" data-signals__ifmissing=\"{_avatarError: '', _avatarBusy: false, _usernameBusy: false, _usernameError: '', _usernameField: '', _usernameNotice: '', _passwordBusy: false, _currentPassword: '', _newPassword: '', _passwordError: '', _passwordNotice: '', _logoutError: ''}\"><div class=\"form-panel\"><div class=\"form-intro\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -140,7 +141,7 @@ func View(account *identity.Account) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(account.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 36, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 37, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -176,7 +177,7 @@ func View(account *identity.Account) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(uploadAction())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 59, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 60, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -207,72 +208,85 @@ func View(account *identity.Account) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</form><form class=\"form-surface\" method=\"post\" action=\"/account/password\" data-indicator:_password-busy data-attr:aria-busy=\"$_passwordBusy ? 'true' : 'false'\" data-on:submit=\"if (!$_passwordBusy) { $_passwordError = ''; $_passwordNotice = ''; @post('/account/password', {retry: 'never', payload: {currentPassword: $_currentPassword, newPassword: $_newPassword}}).catch(() => { $_passwordError = 'Connection failed. Try again.' }) }\" aria-labelledby=\"password-title\"><h2 class=\"account-section-title\" id=\"password-title\">Change password</h2><input type=\"text\" name=\"username\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</form><form class=\"form-surface\" method=\"post\" action=\"/account/username\" data-indicator:_username-busy data-attr:aria-busy=\"$_usernameBusy ? 'true' : 'false'\" data-on:submit=\"if (!$_usernameBusy) { $_usernameError = ''; $_usernameField = ''; $_usernameNotice = ''; @post('/account/username', {retry: 'never', payload: {username: $_username}}).catch(() => { $_usernameError = 'Connection failed. Try again.' }) }\" aria-labelledby=\"username-title\"><h2 class=\"account-section-title\" id=\"username-title\">Change username</h2><div class=\"field\"><label for=\"account-username\">Username</label> <input type=\"text\" id=\"account-username\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(account.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 94, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 100, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" autocomplete=\"username\" hidden><div class=\"field\"><label for=\"current-password\">Current password</label> <input type=\"password\" id=\"current-password\" data-bind:_current-password autocomplete=\"current-password\" required maxlength=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" data-bind:_username data-attr:aria-invalid=\"$_usernameField === 'username' ? 'true' : false\" data-effect=\"$_usernameError && $_usernameField === 'username' && el.focus()\" autocomplete=\"username\" autocapitalize=\"none\" spellcheck=\"false\" required minlength=\"3\" maxlength=\"24\" pattern=\"[A-Za-z0-9][A-Za-z0-9._\\-]{2,23}\" aria-describedby=\"username-hint username-error\"><p class=\"field-hint\" id=\"username-hint\">3–24 letters, numbers, dots, underscores or hyphens. You log in with it.</p></div><p class=\"field-error\" id=\"username-error\" role=\"alert\" data-show=\"$_usernameError\" style=\"display: none\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-alert\"></use></svg> <span data-text=\"$_usernameError\"></span></p><p class=\"field-notice\" role=\"status\" data-text=\"$_usernameNotice\"></p><button type=\"submit\" class=\"button button--primary button--block\" data-attr:disabled=\"$_usernameBusy\" data-text=\"$_usernameBusy ? 'Saving…' : 'Save username'\">Save username</button></form><form class=\"form-surface\" method=\"post\" action=\"/account/password\" data-indicator:_password-busy data-attr:aria-busy=\"$_passwordBusy ? 'true' : 'false'\" data-on:submit=\"if (!$_passwordBusy) { $_passwordError = ''; $_passwordNotice = ''; @post('/account/password', {retry: 'never', payload: {currentPassword: $_currentPassword, newPassword: $_newPassword}}).catch(() => { $_passwordError = 'Connection failed. Try again.' }) }\" aria-labelledby=\"password-title\"><h2 class=\"account-section-title\" id=\"password-title\">Change password</h2><input type=\"text\" name=\"username\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(identity.PasswordMaxLength))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(account.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 97, Col: 171}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 132, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" aria-describedby=\"password-error\"></div><div class=\"field\"><label for=\"new-password\">New password</label> <input type=\"password\" id=\"new-password\" data-bind:_new-password autocomplete=\"new-password\" required minlength=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" autocomplete=\"username\" hidden><div class=\"field\"><label for=\"current-password\">Current password</label> <input type=\"password\" id=\"current-password\" data-bind:_current-password autocomplete=\"current-password\" required maxlength=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(identity.PasswordMinLength))
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(identity.PasswordMaxLength))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 101, Col: 159}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 135, Col: 171}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" maxlength=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" aria-describedby=\"password-error\"></div><div class=\"field\"><label for=\"new-password\">New password</label> <input type=\"password\" id=\"new-password\" data-bind:_new-password autocomplete=\"new-password\" required minlength=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(identity.PasswordMaxLength))
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(identity.PasswordMinLength))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 101, Col: 214}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 139, Col: 159}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" aria-describedby=\"new-password-hint password-error\"><p class=\"field-hint\" id=\"new-password-hint\">At least ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" maxlength=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(identity.PasswordMinLength))
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(identity.PasswordMaxLength))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 102, Col: 101}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 139, Col: 214}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " characters. Your other devices will be logged out.</p></div><p class=\"field-error\" id=\"password-error\" role=\"alert\" data-show=\"$_passwordError\" style=\"display: none\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-alert\"></use></svg> <span data-text=\"$_passwordError\"></span></p><p class=\"field-notice\" role=\"status\" data-text=\"$_passwordNotice\"></p><button type=\"submit\" class=\"button button--primary button--block\" data-attr:disabled=\"$_passwordBusy\" data-text=\"$_passwordBusy ? 'Saving…' : 'Save password'\">Save password</button></form><div class=\"account-logout\"><button type=\"button\" class=\"button button--block\" data-on:click=\"$_logoutError = ''; @post('/logout', {retry: 'never', payload: {}}).catch(() => { $_logoutError = 'Connection failed. Try again.' })\">Log out</button><p class=\"field-error\" role=\"alert\" data-show=\"$_logoutError\" style=\"display: none\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-alert\"></use></svg> <span data-text=\"$_logoutError\"></span></p></div></div></main>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" aria-describedby=\"new-password-hint password-error\"><p class=\"field-hint\" id=\"new-password-hint\">At least ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var12 string
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(identity.PasswordMinLength))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 140, Col: 101}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " characters. Your other devices will be logged out.</p></div><p class=\"field-error\" id=\"password-error\" role=\"alert\" data-show=\"$_passwordError\" style=\"display: none\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-alert\"></use></svg> <span data-text=\"$_passwordError\"></span></p><p class=\"field-notice\" role=\"status\" data-text=\"$_passwordNotice\"></p><button type=\"submit\" class=\"button button--primary button--block\" data-attr:disabled=\"$_passwordBusy\" data-text=\"$_passwordBusy ? 'Saving…' : 'Save password'\">Save password</button></form><div class=\"account-logout\"><button type=\"button\" class=\"button button--block\" data-on:click=\"$_logoutError = ''; @post('/logout', {retry: 'never', payload: {}}).catch(() => { $_logoutError = 'Connection failed. Try again.' })\">Log out</button><p class=\"field-error\" role=\"alert\" data-show=\"$_logoutError\" style=\"display: none\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-alert\"></use></svg> <span data-text=\"$_logoutError\"></span></p></div></div></main>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -296,67 +310,67 @@ func avatar(account *identity.Account, class string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var12 == nil {
-			templ_7745c5c3_Var12 = templ.NopComponent
+		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var13 == nil {
+			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if path := account.AvatarPath(); path != "" {
-			var templ_7745c5c3_Var13 = []any{"avatar", class}
-			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var13...)
+			var templ_7745c5c3_Var14 = []any{"avatar", class}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var14...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<img class=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var13).String())
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 1, Col: 0}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" src=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<img class=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(path)
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var14).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 124, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" alt=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" src=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(path)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 162, Col: 43}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" alt=\"\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			var templ_7745c5c3_Var16 = []any{"avatar", "avatar--empty", class}
-			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var16...)
+			var templ_7745c5c3_Var17 = []any{"avatar", "avatar--empty", class}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var17...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<span class=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var16).String())
+			var templ_7745c5c3_Var18 string
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var17).String())
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/account/page.templ`, Line: 1, Col: 0}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-user\"></use></svg></span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-user\"></use></svg></span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

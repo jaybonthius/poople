@@ -422,3 +422,80 @@ func TestWithPlayerReadsWithoutWritingAndEnsurePlayerCreatesOnce(t *testing.T) {
 		t.Fatal("storage failure did not fail closed")
 	}
 }
+
+func TestChangeUsernameRenamesAndFreesTheOldName(t *testing.T) {
+	t.Parallel()
+	db := openStore(t, t.TempDir())
+	users := openIdentity(t, db, nil)
+	admin, _ := createAdmin(t, users)
+	mira, _, err := users.SignUp(t.Context(), "", "mira", fixturePassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notified := func(changes <-chan struct{}) bool {
+		select {
+		case <-changes:
+			return true
+		default:
+			return false
+		}
+	}
+	username := func(id int64) string {
+		t.Helper()
+		var name string
+		if err := db.Read(t.Context(), func(conn *sqlite.Conn) error {
+			return sqlitex.Execute(conn, "SELECT username FROM accounts WHERE id = ?", &sqlitex.ExecOptions{Args: []any{id}, ResultFunc: func(stmt *sqlite.Stmt) error { name = stmt.ColumnText(0); return nil }})
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return name
+	}
+
+	changes := users.AccountChanges()
+	if got, err := users.ChangeUsername(t.Context(), mira.ID, " Mirabel "); err != nil || got != "Mirabel" {
+		t.Fatalf("rename: %q %v", got, err)
+	}
+	if !notified(changes) {
+		t.Fatal("rename did not wake account views")
+	}
+	if _, _, err := users.Login(t.Context(), "", "mirabel", fixturePassword); err != nil {
+		t.Fatalf("log in with the new name: %v", err)
+	}
+	if _, _, err := users.Login(t.Context(), "", "mira", fixturePassword); !errors.Is(err, identity.ErrInvalidCredentials) {
+		t.Fatalf("old name still logs in: %v", err)
+	}
+
+	for _, name := range []string{"admin", "ADMIN", "aDmIn"} {
+		changes = users.AccountChanges()
+		if _, err := users.ChangeUsername(t.Context(), mira.ID, name); !errors.Is(err, identity.ErrUsernameTaken) {
+			t.Fatalf("taken %q: %v", name, err)
+		}
+		if notified(changes) || username(mira.ID) != "Mirabel" || username(admin.ID) != "Admin" {
+			t.Fatalf("refused rename to %q changed something", name)
+		}
+	}
+	for _, name := range []string{"ab", "-dash", "has space", "émile", "abcdefghijklmnopqrstuvwxy", ""} {
+		if _, err := users.ChangeUsername(t.Context(), mira.ID, name); !errors.Is(err, identity.ErrUsernameInvalid) {
+			t.Fatalf("invalid %q: %v", name, err)
+		}
+	}
+	if username(mira.ID) != "Mirabel" {
+		t.Fatal("invalid rename changed the name")
+	}
+
+	changes = users.AccountChanges()
+	if got, err := users.ChangeUsername(t.Context(), mira.ID, "Mirabel"); err != nil || got != "Mirabel" || notified(changes) {
+		t.Fatalf("unchanged name: %q %v notified=%v", got, err, notified(changes))
+	}
+	if got, err := users.ChangeUsername(t.Context(), mira.ID, "MIRABEL"); err != nil || got != "MIRABEL" || username(mira.ID) != "MIRABEL" {
+		t.Fatalf("case-only change of own name: %q %v", got, err)
+	}
+
+	// The old name is free for someone else.
+	if _, _, err := users.SignUp(t.Context(), "", "Mira", fixturePassword); err != nil {
+		t.Fatalf("old name not freed: %v", err)
+	}
+	if _, err := users.ChangeUsername(t.Context(), 9999, "nobody"); !errors.Is(err, identity.ErrAccountNotFound) {
+		t.Fatalf("missing account: %v", err)
+	}
+}

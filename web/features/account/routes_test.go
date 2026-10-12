@@ -11,11 +11,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"poople/app"
+	"poople/ladder"
 	"poople/web"
 	"poople/web/services/identity"
 )
@@ -339,4 +341,160 @@ func TestPasswordChangeIsRateLimited(t *testing.T) {
 	if !signalPatch(last, "Too many attempts.") {
 		t.Fatalf("sixth attempt: %s", last.Body)
 	}
+}
+
+// rename posts a username change from client, so each test controls which
+// requests share the per-client rate limit.
+func (f fixture) rename(session, username, client string) *httptest.ResponseRecorder {
+	body, _ := json.Marshal(map[string]string{"username": username})
+	r := httptest.NewRequest("POST", "/account/username", bytes.NewReader(body))
+	r.RemoteAddr = client
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Datastar-Request", "true")
+	r.Header.Set("Sec-Fetch-Site", "same-origin")
+	return f.serve(r, session)
+}
+
+func loggedIn(w *httptest.ResponseRecorder) bool {
+	return strings.Contains(w.Body.String(), `window.location.href = "/"`)
+}
+
+func TestUsernameChangeThroughHTTP(t *testing.T) {
+	f := newFixture(t)
+	if page := f.page("/account", f.mira).Body.String(); !strings.Contains(page, `id="account-username" value="mira"`) || !strings.Contains(page, `action="/account/username"`) {
+		t.Fatal("account page does not offer the current username")
+	}
+	w := f.rename(f.mira, " Mirabel ", "192.0.2.1:1000")
+	if !signalPatch(w, "Username saved.") || !strings.Contains(w.Body.String(), `"_username":"Mirabel"`) || strings.Contains(w.Body.String(), "<main") {
+		t.Fatalf("rename: %d %s", w.Code, w.Body)
+	}
+	if page := f.page("/account", f.mira).Body.String(); !strings.Contains(page, `<h1 class="page-title">Mirabel</h1>`) || !strings.Contains(page, `aria-label="Your account, Mirabel"`) {
+		t.Fatal("account page still shows the old name")
+	}
+	if w := f.postJSON("/login", "", map[string]string{"username": "mirabel", "password": password}); !loggedIn(w) {
+		t.Fatalf("new name does not log in: %s", w.Body)
+	}
+	if w := f.postJSON("/login", "", map[string]string{"username": "mira", "password": password}); !signalPatch(w, "Invalid username or password.") {
+		t.Fatalf("old name still logs in: %s", w.Body)
+	}
+
+	// Taken names are refused in any case, against the field, changing nothing.
+	for i, name := range []string{"jay", "JAY"} {
+		w := f.rename(f.mira, name, "192.0.2.2:"+strconv.Itoa(1000+i))
+		if !signalPatch(w, "That username is taken. Try another.") || !strings.Contains(w.Body.String(), `"_usernameField":"username"`) {
+			t.Fatalf("taken %q: %s", name, w.Body)
+		}
+	}
+	if !strings.Contains(f.page("/account", f.mira).Body.String(), `<h1 class="page-title">Mirabel</h1>`) || !strings.Contains(f.page("/account", f.admin).Body.String(), `<h1 class="page-title">jay</h1>`) {
+		t.Fatal("refused rename changed a username")
+	}
+
+	for i, name := range []string{"ab", "has space", "-dash", strings.Repeat("a", 25)} {
+		if w := f.rename(f.mira, name, "192.0.2.3:"+strconv.Itoa(1000+i)); !signalPatch(w, "Username must be 3–24 letters") || !strings.Contains(w.Body.String(), `"_usernameField":"username"`) {
+			t.Fatalf("invalid %q: %s", name, w.Body)
+		}
+	}
+
+	if w := f.rename(f.mira, "MIRABEL", "192.0.2.4:1000"); !signalPatch(w, "Username saved.") {
+		t.Fatalf("case-only change of own name: %s", w.Body)
+	}
+	if !strings.Contains(f.page("/account", f.mira).Body.String(), `<h1 class="page-title">MIRABEL</h1>`) {
+		t.Fatal("case-only change not stored")
+	}
+	// The old name is free for someone else.
+	if w := f.postJSON("/signup", "", map[string]string{"username": "mira", "password": password}); !loggedIn(w) {
+		t.Fatalf("old name not freed: %s", w.Body)
+	}
+}
+
+func TestUsernameChangeRefusesAnonymousAndCrossOriginRequests(t *testing.T) {
+	f := newFixture(t)
+	if w := f.rename("", "intruder", "192.0.2.1:1000"); !loginRedirect(w) {
+		t.Fatalf("no session: %d %s", w.Code, w.Body)
+	}
+	// A player who has played but has no account is refused too.
+	data, err := ladder.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, _ := data.ShortestPath(data.DailyStart(ladder.DailyNumber(time.Now())))
+	anonymous := f.session(t, f.postJSON("/play/guess", "", map[string]string{"guess": path[1]}))
+	if w := f.rename(anonymous, "intruder", "192.0.2.1:1001"); !loginRedirect(w) {
+		t.Fatalf("anonymous player: %d %s", w.Code, w.Body)
+	}
+
+	body, _ := json.Marshal(map[string]string{"username": "intruder"})
+	r := httptest.NewRequest("POST", "/account/username", bytes.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Sec-Fetch-Site", "cross-site")
+	r.Header.Set("Origin", "https://untrusted.invalid")
+	if w := f.serve(r, f.mira); w.Code != http.StatusForbidden {
+		t.Fatalf("cross-origin rename status=%d", w.Code)
+	}
+	form := httptest.NewRequest("POST", "/account/username", strings.NewReader("username=intruder"))
+	form.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if w := f.serve(form, f.mira); !signalPatch(w, "Invalid request. Try again.") {
+		t.Fatalf("form-encoded rename: %s", w.Body)
+	}
+	if !strings.Contains(f.page("/account", f.mira).Body.String(), `<h1 class="page-title">mira</h1>`) {
+		t.Fatal("a refused request renamed the account")
+	}
+}
+
+func TestUsernameChangeIsRateLimitedPerClient(t *testing.T) {
+	f := newFixture(t)
+	for i := range 5 {
+		if w := f.rename(f.mira, "jay", "192.0.2.10:"+strconv.Itoa(1000+i)); !signalPatch(w, "That username is taken.") {
+			t.Fatalf("attempt %d: %s", i+1, w.Body)
+		}
+	}
+	if w := f.rename(f.mira, "mirabel", "192.0.2.10:2000"); !signalPatch(w, "Too many attempts.") {
+		t.Fatalf("sixth attempt: %s", w.Body)
+	}
+	if w := f.rename(f.mira, "mirabel", "192.0.2.11:1000"); !signalPatch(w, "Username saved.") {
+		t.Fatalf("another client shares the limit: %s", w.Body)
+	}
+}
+
+// Another viewer's open leaderboard re-renders with the new name.
+func TestRenameShowsOnAnotherViewersLeaderboard(t *testing.T) {
+	f := newFixture(t)
+	data, err := ladder.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, _ := data.ShortestPath(data.DailyStart(ladder.DailyNumber(time.Now())))
+	for _, word := range path[1:] {
+		if w := f.postJSON("/play/guess", f.mira, map[string]string{"guess": word}); w.Code != http.StatusNoContent {
+			t.Fatalf("guess %q: %d %s", word, w.Code, w.Body)
+		}
+	}
+
+	server := httptest.NewServer(f.handler)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	request, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/leaderboard/state", nil)
+	request.Header.Set("Datastar-Request", "true")
+	request.AddCookie(&http.Cookie{Name: identity.SessionCookie, Value: f.admin})
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	events := bufio.NewReader(response.Body)
+	waitFor := func(name string) {
+		t.Helper()
+		for event := readEvent(events); event != ""; event = readEvent(events) {
+			if strings.Contains(event, `<main id="main"`) && strings.Contains(event, name) {
+				return
+			}
+		}
+		t.Fatalf("stream ended before showing %q", name)
+	}
+	waitFor(">mira<")
+	if w := f.rename(f.mira, "Mirabel", "192.0.2.1:1000"); !signalPatch(w, "Username saved.") {
+		t.Fatalf("rename: %s", w.Body)
+	}
+	waitFor(">Mirabel<")
 }

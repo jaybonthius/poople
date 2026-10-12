@@ -24,7 +24,7 @@ type ListedAccount struct {
 }
 
 // AccountChanges closes after the next committed change to any account: sign-up,
-// picture, password, revoked sessions or deletion. Take it before reading a view.
+// username, picture, password, revoked sessions or deletion. Take it before reading a view.
 func (s *Service) AccountChanges() <-chan struct{} {
 	s.accountsMu.Lock()
 	defer s.accountsMu.Unlock()
@@ -107,6 +107,48 @@ func (s *Service) ChangePassword(ctx context.Context, sessionToken, current, nex
 	// Wake views so the revoked sessions stop streaming.
 	s.notifyAccounts()
 	return nil
+}
+
+// ChangeUsername renames accountID under sign-up's username rules and returns
+// the stored name. Names are unique case-insensitively, but an account may
+// change the case of its own. The old name is free for others afterwards.
+func (s *Service) ChangeUsername(ctx context.Context, accountID int64, username string) (string, error) {
+	normalized, valid := normalizeUsername(username)
+	if !valid {
+		return "", ErrUsernameInvalid
+	}
+	changed := false
+	if err := s.db.Write(ctx, func(conn *sqlite.Conn) error {
+		current, err := accountByID(conn, accountID)
+		if err != nil {
+			return err
+		}
+		if current == nil {
+			return ErrAccountNotFound
+		}
+		if current.Username == normalized {
+			return nil
+		}
+		taken, err := accountByUsername(conn, normalized)
+		if err != nil {
+			return err
+		}
+		if taken != nil && taken.ID != accountID {
+			return ErrUsernameTaken
+		}
+		changed = true
+		return zz.OnceSetAccountUsername(conn, zz.SetAccountUsernameParams{Username: normalized, Id: accountID})
+	}); err != nil {
+		if errors.Is(err, ErrAccountNotFound) || errors.Is(err, ErrUsernameTaken) {
+			return "", err
+		}
+		return "", fmt.Errorf("change username: %w", err)
+	}
+	// Wake every view that shows names: leaderboards, the admin list and mastheads.
+	if changed {
+		s.notifyAccounts()
+	}
+	return normalized, nil
 }
 
 // ListAccounts returns every account by username for adminID.
