@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,6 +36,7 @@ type fixture struct {
 	path       []string // the shortest ladder the game service reveals
 	par        int
 	tomorrow   string // tomorrow's start word, which must never be sent
+	data       *ladder.Data
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -68,7 +70,7 @@ func newFixtureAt(t *testing.T, now func() time.Time) *fixture {
 	if !ok {
 		t.Fatalf("no ladder from %q", start)
 	}
-	return &fixture{backend, handler, token, start, path, len(path) - 1, data.DailyStart(number + 1)}
+	return &fixture{backend, handler, token, start, path, len(path) - 1, data.DailyStart(number + 1), data}
 }
 
 func (f *fixture) count(t *testing.T, query string) int64 {
@@ -268,10 +270,56 @@ func signalText(body string) string {
 	return strings.ToLower(strings.Join(text, "\n"))
 }
 
-// assertHidden fails when body reveals par, a solution word the ladder does
-// not show yet, or a later puzzle's start word.
+var yesterdaySheet = regexp.MustCompile(`(?s)<dialog\s+id="yesterday".*?</dialog>`)
+
+// splitYesterday returns body without Yesterday's answer, and that sheet.
+func splitYesterday(body string) (rest, sheet string) {
+	sheet = yesterdaySheet.FindString(body)
+	return strings.Replace(body, sheet, "", 1), sheet
+}
+
+var answerRung = regexp.MustCompile(`<li class="rung[^"]*">(.*?)</li>`)
+var answerTile = regexp.MustCompile(`<span class="tile[^"]*" aria-hidden="true">([A-Z])</span>`)
+
+// assertYesterday fails unless body's Yesterday's answer is daily puzzle
+// number: its title, par and its shortest ladder top to bottom, and nothing
+// from today's puzzle.
+func (f *fixture) assertYesterday(t *testing.T, body string, number int) {
+	t.Helper()
+	_, sheet := splitYesterday(body)
+	start := f.data.DailyStart(number)
+	path, _ := f.data.ShortestPath(start)
+	for _, want := range []string{
+		`aria-labelledby="yesterday-title"`,
+		`<h2 class="sheet-title" id="yesterday-title">Yesterday’s answer</h2>`,
+		"Poople #" + strconv.Itoa(number) + ": " + strings.ToUpper(start),
+		"The shortest route to POOP took <strong>" + strconv.Itoa(len(path)-1) + " steps</strong>, which is par.",
+	} {
+		if !strings.Contains(sheet, want) {
+			t.Fatalf("Yesterday's answer missing %q: %s", want, sheet)
+		}
+	}
+	var rungs []string
+	for _, rung := range answerRung.FindAllStringSubmatch(sheet, -1) {
+		var word strings.Builder
+		for _, tile := range answerTile.FindAllStringSubmatch(rung[1], -1) {
+			word.WriteString(strings.ToLower(tile[1]))
+		}
+		rungs = append(rungs, word.String())
+	}
+	if strings.Join(rungs, " ") != strings.Join(path, " ") {
+		t.Fatalf("Yesterday's ladder = %v, want #%d's %v", rungs, number, path)
+	}
+	if today := f.data.DailyStart(number + 1); strings.Contains(sheet, strings.ToUpper(today)) {
+		t.Fatalf("Yesterday's answer contains today's start word %q", today)
+	}
+}
+
+// assertHidden fails when body, outside Yesterday's answer, reveals par, a
+// solution word the ladder does not show yet, or a later puzzle's start word.
 func (f *fixture) assertHidden(t *testing.T, body string, shownSteps int) {
 	t.Helper()
+	body, _ = splitYesterday(body)
 	for _, secret := range []string{"result-score", ", par ", "(par ", "A shortest ladder", "Poople #", "standings"} {
 		if strings.Contains(body, secret) {
 			t.Fatalf("unfinished response contains %q", secret)
@@ -337,7 +385,7 @@ func TestFirstGuessCreatesThePlayerAndRepeatsAreHarmless(t *testing.T) {
 	}
 }
 
-func TestPlayRevealsParSolutionAndLeaderboardOnlyAfterFinishing(t *testing.T) {
+func TestPlayRevealsParAndLeaderboardOnlyAfterFinishing(t *testing.T) {
 	f := newFixture(t)
 	server := f.server(t)
 	session := f.guess(t, "", "zzzz")
@@ -368,7 +416,6 @@ func TestPlayRevealsParSolutionAndLeaderboardOnlyAfterFinishing(t *testing.T) {
 			`<h2 class="verdict verdict--perfect" id="finish-title">Perfect!</h2>`,
 			"<strong>" + strconv.Itoa(f.par) + " steps</strong>, par " + strconv.Itoa(f.par),
 			"On par",
-			"A shortest ladder",
 			"Today’s leaderboard",
 			"Anonymous",
 			`<span class="you-tag">You</span>`,
@@ -382,14 +429,104 @@ func TestPlayRevealsParSolutionAndLeaderboardOnlyAfterFinishing(t *testing.T) {
 				t.Fatalf("finished view missing %q", want)
 			}
 		}
-		for _, word := range f.path {
-			if !strings.Contains(html, strings.ToUpper(word)+"</span>") {
-				t.Fatalf("finished view lacks solution word %q", word)
-			}
+		if rest, _ := splitYesterday(html); strings.Contains(rest, "A shortest ladder") || strings.Contains(rest, "ladder--answer") {
+			t.Fatal("finished daily view draws today's shortest ladder")
 		}
 		if strings.Contains(html, strings.ToUpper(f.tomorrow)) {
 			t.Fatal("finished view contains tomorrow's start word")
 		}
+	}
+}
+
+// Finishing today's puzzle by a longer route never reveals a shortest one:
+// outside Yesterday's answer, the page and its stream show only the player's
+// own ladder. The best route appears the next day as Yesterday's answer.
+func TestFinishedDailyHidesTheShortestLadderUntilTomorrow(t *testing.T) {
+	clock := &runningClock{}
+	clock.Set(time.Date(2026, time.October, 11, 9, 0, 0, 0, time.UTC)) // #423, FUSE
+	f := newFixtureAt(t, clock.Now)
+	server := f.server(t)
+	route := f.longerRoute(t)
+	var withheld []string
+	for _, word := range f.path {
+		if !slices.Contains(route, word) {
+			withheld = append(withheld, word)
+		}
+	}
+	if len(withheld) == 0 {
+		t.Fatalf("route %v shares every word with the shortest ladder %v", route, f.path)
+	}
+	session := ""
+	for _, word := range route[1:] {
+		session = f.guess(t, session, word)
+	}
+	for _, html := range []string{f.page(t, session), f.stream(t, server, session, nil).next(t)} {
+		if !strings.Contains(html, "Solved") || !strings.Contains(html, "+"+strconv.Itoa(len(route)-1-f.par)+" over par") {
+			t.Fatal("finish sheet missing")
+		}
+		rest, _ := splitYesterday(html)
+		for _, word := range withheld {
+			if strings.Contains(rest, strings.ToUpper(word)) || strings.Contains(signalText(rest), word) {
+				t.Fatalf("finished daily view reveals solution word %q", word)
+			}
+		}
+		for _, want := range []string{`id="yesterday-link"`, `id="finish-yesterday-link"`, "Today’s shortest ladder appears tomorrow as Yesterday’s answer."} {
+			if !strings.Contains(rest, want) {
+				t.Fatalf("finished daily view missing %q", want)
+			}
+		}
+		f.assertYesterday(t, html, 422)
+	}
+	clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
+	html := f.page(t, session)
+	f.assertYesterday(t, html, 423)
+	if !strings.Contains(html, "Daily #424<") {
+		t.Fatal("the next day's page is not #424")
+	}
+}
+
+// longerRoute is a ladder from today's start to POOP that avoids the shortest
+// ladder's first step.
+func (f *fixture) longerRoute(t *testing.T) []string {
+	t.Helper()
+	for _, slack := range []int{1, 0} {
+		for _, next := range f.data.Neighbors(f.start) {
+			if d, ok := f.data.Distance(next); next == f.path[1] || !ok || d != f.par-1+slack {
+				continue
+			}
+			rest, _ := f.data.ShortestPath(next)
+			if !slices.Contains(rest, f.path[1]) && !slices.Contains(rest, f.start) {
+				return append([]string{f.start}, rest...)
+			}
+		}
+	}
+	t.Fatalf("no route from %q avoiding %q", f.start, f.path[1])
+	return nil
+}
+
+// Yesterday's answer opens from the heading before the player has guessed.
+func TestYesterdaysAnswerIsOnThePageBeforePlaying(t *testing.T) {
+	f := newFixture(t)
+	server := f.server(t)
+	number := ladder.DailyNumber(time.Now())
+	for _, html := range []string{f.page(t, ""), f.stream(t, server, "", nil).next(t)} {
+		if !strings.Contains(html, `<button type="button" id="yesterday-link" class="result-link" aria-haspopup="dialog" data-on:click="$_yesterdayOpen = true">Yesterday’s answer</button>`) {
+			t.Fatal("heading lacks Yesterday's answer")
+		}
+		f.assertYesterday(t, html, number-1)
+		f.assertHidden(t, html, 0)
+	}
+	if got := f.count(t, "SELECT count(*) FROM players"); got != 0 {
+		t.Fatalf("Yesterday's answer created %d players", got)
+	}
+}
+
+// Puzzle #0 has no yesterday.
+func TestNoYesterdaysAnswerOnTheFirstPuzzle(t *testing.T) {
+	f := newFixtureAt(t, func() time.Time { return time.Date(2025, time.August, 14, 9, 0, 0, 0, time.UTC) })
+	html := f.page(t, "")
+	if !strings.Contains(html, "Daily #0<") || strings.Contains(html, "Yesterday’s answer") || strings.Contains(html, `id="yesterday"`) {
+		t.Fatal("puzzle #0 offers a Yesterday's answer")
 	}
 }
 
@@ -544,11 +681,13 @@ func TestStreamMovesToTheNextPuzzleAt0800UTCAndDropsGuessesOnTheClosedOne(t *tes
 		t.Fatalf("frame before 08:00 UTC is not puzzle #%d with the guess", number)
 	}
 	f.assertHidden(t, frame, 1)
+	f.assertYesterday(t, frame, number-1)
 	// Nothing commits; the stream's own timer moves it on at 08:00 UTC.
 	frame = watching.next(t)
 	if !strings.Contains(frame, "Daily #"+strconv.Itoa(number+1)+"<") || !strings.Contains(frame, strings.ToUpper(f.tomorrow)+", start word") {
 		t.Fatalf("frame after 08:00 UTC is not puzzle #%d", number+1)
 	}
+	f.assertYesterday(t, frame, number)
 	// A guess the browser typed against the closed puzzle is dropped.
 	if w := f.post(t, "/play/guess", session, map[string]any{"guess": f.path[2], "puzzleId": closed}); w.Code != http.StatusNoContent {
 		t.Fatalf("guess on the closed puzzle status=%d", w.Code)

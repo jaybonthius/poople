@@ -56,6 +56,14 @@ func rungLabel(word, target string) string {
 	}
 }
 
+// answerRungLabel is the hidden text for rung i of an AnswerLadder.
+func answerRungLabel(i int, word, target string) string {
+	if i == 0 {
+		return upper(word) + ", start word"
+	}
+	return "Step " + strconv.Itoa(i) + ": " + rungLabel(word, target)
+}
+
 func reached(rungs []string, target string) bool {
 	return len(rungs) > 0 && strings.EqualFold(rungs[len(rungs)-1], target)
 }

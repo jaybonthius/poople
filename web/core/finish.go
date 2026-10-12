@@ -13,19 +13,20 @@ const finishSheetEffect = "if ($_finishClosed) { el.open && el.close() } else if
 // and moves focus to Show result once it is shown.
 const finishSheetClosed = "$_finishClosed = true; requestAnimationFrame(() => document.getElementById('show-result')?.focus())"
 
-// finishSheetBackdropClick closes the sheet on a click outside its box: a modal
+// SheetBackdropClick closes a modal sheet on a click outside its box: a modal
 // dialog receives clicks on its ::backdrop as clicks on itself.
-const finishSheetBackdropClick = "if (evt.target === el) { const box = el.getBoundingClientRect(); " +
+const SheetBackdropClick = "if (evt.target === el) { const box = el.getBoundingClientRect(); " +
 	"if (evt.clientX < box.left || evt.clientX > box.right || evt.clientY < box.top || evt.clientY > box.bottom) el.close() }"
 
 // FinishResult is a finished game as the finish sheet draws it. Build it only
-// once the player has finished: it carries par and a shortest solution.
+// once the player has finished: it carries par, and may carry a shortest
+// solution. Leave Solution nil while a daily puzzle is still today's.
 type FinishResult struct {
 	Start    string
 	Target   string
 	Steps    int
 	Par      int
-	Solution []string // one shortest ladder, start word first
+	Solution []string // one shortest ladder, start word first; nil draws none
 }
 
 // Perfect is true when the player matched par.

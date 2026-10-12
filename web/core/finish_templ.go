@@ -11,7 +11,8 @@ import templruntime "github.com/a-h/templ/runtime"
 import "strconv"
 
 // FinishSheet is the finish sheet: a modal dialog with the verdict, route,
-// steps against par and the shortest solution, then children for the page's
+// steps against par and, when r.Solution is set, a shortest ladder drawn
+// vertically (AnswerLadder), then children for the page's
 // own sections. Render it only for a finished game, inside a <main> that
 // declares data-signals:_finish-closed__ifmissing="false". It opens as a modal
 // (the page behind is inert) and takes focus; Close, Escape or a click on the
@@ -44,7 +45,7 @@ func FinishSheet(r FinishResult) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(finishSheetEffect)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 19, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 20, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -57,7 +58,7 @@ func FinishSheet(r FinishResult) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(finishSheetClosed)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 20, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 21, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -68,9 +69,9 @@ func FinishSheet(r FinishResult) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(finishSheetBackdropClick)
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(SheetBackdropClick)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 21, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 22, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +99,7 @@ func FinishSheet(r FinishResult) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(r.Route())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 30, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 31, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +112,7 @@ func FinishSheet(r FinishResult) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(StepCount(r.Steps))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 31, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 32, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +125,7 @@ func FinishSheet(r FinishResult) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(r.Par))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 31, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 32, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -159,39 +160,35 @@ func FinishSheet(r FinishResult) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(r.parDelta())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 31, Col: 193}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/finish.templ`, Line: 32, Col: 193}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span></p></div><button type=\"button\" class=\"sheet-close\" aria-label=\"Close\" data-on:click=\"$_finishClosed = true\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-close\"></use></svg></button></div><section class=\"sheet-section\" aria-labelledby=\"finish-solution-title\"><h3 class=\"sheet-section-title\" id=\"finish-solution-title\">A shortest ladder</h3><ol class=\"solution\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span></p></div><button type=\"button\" class=\"sheet-close\" aria-label=\"Close\" data-on:click=\"$_finishClosed = true\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-close\"></use></svg></button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, word := range r.Solution {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<li class=\"solution-step\">")
+		if len(r.Solution) > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<section class=\"sheet-section\" aria-labelledby=\"finish-solution-title\"><h3 class=\"sheet-section-title\" id=\"finish-solution-title\">A shortest ladder</h3>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = MiniWord(word, r.Target).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = AnswerLadder(r.Solution, r.Target).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</li>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</ol></section>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templ_7745c5c3_Var1.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -222,7 +219,7 @@ func ShowResultButton() templ.Component {
 			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<button type=\"button\" id=\"show-result\" class=\"result-link\" style=\"display: none\" data-preserve-attr=\"style\" data-show=\"$_finishClosed\" data-on:click=\"$_finishClosed = false\">Show result</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button type=\"button\" id=\"show-result\" class=\"result-link\" style=\"display: none\" data-preserve-attr=\"style\" data-show=\"$_finishClosed\" data-on:click=\"$_finishClosed = false\">Show result</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

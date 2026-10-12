@@ -1,4 +1,4 @@
-/* Sheets: finish (verdict, route, solution, share, countdown) and stats shells. */
+/* Sheets: finish (verdict, route, share, countdown) and stats shells. */
 
 @layer components {
   /* Sheet: finish and stats. A modal <dialog> anchored to the bottom on phones. */
@@ -181,42 +181,6 @@
   .par-delta--even {
     background: var(--wood-soft);
     color: var(--wood-ink);
-  }
-
-  /* One shortest solution, as mini rungs read left to right, row by row */
-  .solution {
-    display: grid;
-    grid-template-columns: repeat(3, auto);
-    justify-content: start;
-    gap: var(--space-3) var(--space-5);
-  }
-
-  .mini-word {
-    display: flex;
-    gap: 2px;
-  }
-
-  .mini-tile {
-    display: grid;
-    place-items: center;
-    inline-size: 1.375rem;
-    block-size: 1.5rem;
-    border: var(--hairline) solid var(--tile-line);
-    border-radius: 0.3rem;
-    background: var(--tile-face);
-    box-shadow: inset 0 -2px 0 var(--tile-edge);
-    color: var(--tile-ink);
-    font-family: var(--font-display);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    line-height: 1;
-  }
-
-  .mini-tile.tile--match {
-    border-color: var(--wood-edge);
-    background: var(--wood);
-    box-shadow: inset 0 -2px 0 var(--wood-edge);
-    color: var(--on-wood);
   }
 
   .share-row {

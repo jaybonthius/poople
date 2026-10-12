@@ -1,4 +1,4 @@
-/* Play page: the share row. */
+/* Play page: the share row, the next-puzzle countdown and Yesterday's answer. */
 
 @layer feature {
   /* share-result renders its button in light DOM, so the host takes the button's place in .share-row.
@@ -19,5 +19,54 @@
     flex-grow: 1;
     padding-inline: var(--space-4);
     white-space: nowrap;
+  }
+
+  /* Show result and Yesterday's answer wrap together under the title on phones. */
+  .puzzle-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1) var(--space-4);
+  }
+
+  .next-puzzle {
+    display: grid;
+    gap: var(--space-1);
+    text-align: center;
+  }
+
+  /* Yesterday's answer: the puzzle, its par in a sentence, then the route top to bottom.
+     Like the finish sheet, it takes focus when it opens and needs no focus ring itself. */
+  #yesterday:focus-visible {
+    outline: none;
+  }
+
+  .answer {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-3);
+    text-align: center;
+  }
+
+  .answer-title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    letter-spacing: 0.02em;
+  }
+
+  .answer-note {
+    max-inline-size: 30ch;
+    color: var(--ink-muted);
+    text-wrap: pretty;
+  }
+
+  .answer-note strong {
+    color: var(--ink);
+  }
+
+  .answer .ladder {
+    margin-block-start: var(--space-2);
   }
 }

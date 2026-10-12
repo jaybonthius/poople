@@ -85,15 +85,23 @@ templ inputTiles() {
 	}
 }
 
-// MiniWord draws a word as small tiles (finish-sheet solutions), matched
-// against target like Ladder, with hidden text naming the word.
-templ MiniWord(word, target string) {
-	<span class="mini-word">
-		for _, tile := range letterTiles(word, target) {
-			<span class={ "mini-tile", templ.KV("tile--match", tile.Match) } aria-hidden="true">{ tile.Letter }</span>
-		}
-	</span>
-	<span class="visually-hidden">{ upper(word) }</span>
+// AnswerLadder draws a known route read-only and compact: words top to
+// bottom, from the start word to the target, between the same rails and with
+// tiles matched against target like Ladder. Rungs have no ids, so it can sit
+// beside a Ladder on one page.
+templ AnswerLadder(words []string, target string) {
+	if len(words) > 0 {
+		<ol class="ladder ladder--answer" aria-label={ "One shortest ladder from " + upper(words[0]) + " to " + upper(target) }>
+			for i, word := range words {
+				<li class={ "rung", templ.KV("rung--start", i == 0) }>
+					for _, tile := range letterTiles(word, target) {
+						<span class={ "tile", templ.KV("tile--match", tile.Match) } aria-hidden="true">{ tile.Letter }</span>
+					}
+					<span class="visually-hidden">{ answerRungLabel(i, word, target) }</span>
+				</li>
+			}
+		</ol>
+	}
 }
 
 // Keyboard is the on-screen keyboard. Letter keys append to $guess (up to four

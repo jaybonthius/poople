@@ -74,7 +74,6 @@ typography:
     fontWeight: 700
     lineHeight: 1.25
 rounded:
-  mini-tile: "0.3rem"
   tile: "0.5rem"
   key: "0.5rem"
   control: "0.625rem"
@@ -256,8 +255,9 @@ Each component maps to one server-rendered Templ part. Views are full-`<main>` m
 ### Ladder (signature)
 - **Structure:** `<ol class="ladder">` of `<li class="rung">`, each with four `<span class="tile">` plus visually hidden word text. Rung kinds: `rung--start`, plain accepted rungs, `rung--input` (the only lit rung), `rung--gap` (dashed rails, empty, `aria-hidden`), `rung--goal` (dashed POOP), and `rung--reached` when the goal is reached (gap and input rows disappear).
 - **Tiles:** ivory with ink; `tile--match` in wood when the letter equals POOP's at that position; input cells `tile--typed` and `tile--cursor` (wood caret); `rung--rejected` turns the input row tomato.
-- **Server part:** shared Templ component in `web/core` (tiles are reused by the finish sheet's mini rungs). The server decides `tile--match`; the letters in progress come from a Datastar signal bound into the input rung.
-- **Hidden calendar:** the gap rung never shows a count; par, solution and leaderboard appear only in the finish sheet.
+- **Answer ladder:** a known route is drawn read-only as `ladder ladder--answer`: the same rails, rungs and matched tiles at a smaller scale (2.25rem tiles), start word at the top and POOP at the foot, no ids, no gap or input rung. Used by Yesterday's answer and the unlimited finish sheet; never as a horizontal row of mini words.
+- **Server part:** shared Templ components in `web/core` (`Ladder`, `AnswerLadder`). The server decides `tile--match`; the letters in progress come from a Datastar signal bound into the input rung.
+- **Hidden calendar:** the gap rung never shows a count; par and leaderboard appear only in the finish sheet. A daily puzzle's shortest ladder appears only the next day, as Yesterday's answer; the game service withholds it while the puzzle is today's.
 
 ### Keyboard
 - **Style:** `surface-sunken` tray; keys in `key` with bevel, Fredoka letters; Enter in wood; backspace drawn icon with "Delete letter" label. Keys are 3–3.5rem tall and share the row width, as in Wordle.
@@ -267,11 +267,12 @@ Each component maps to one server-rendered Templ part. Views are full-`<main>` m
 - **Style:** ink pill below the masthead, `role="status"`. Copy names the problem: "Not in word list", "Not one letter different", "Copied to clipboard".
 - **Server part:** rendered from `games.last_rejection`; keyed by `rejection_seq` so a repeat rejection re-enters.
 
-### Sheet (finish, stats)
+### Sheet (finish, Yesterday's answer, stats)
 - **Style:** `<dialog>` bottom sheet on `surface`, scrim over the board, close button top right.
-- **Finish:** verdict stamp as the `h2` ("Perfect!" in wood when on par, "Solved" in leaf otherwise), route `START → POOP`, steps against par with a chip ("On par" or "+n over par"), one shortest solution as mini rungs in a 3-column grid, Share (primary) and Play unlimited, countdown to 08:00 UTC, today's leaderboard (live) with avatars, links to stats and the full leaderboard.
+- **Finish:** verdict stamp as the `h2` ("Perfect!" in wood when on par, "Solved" in leaf otherwise), route `START → POOP`, steps against par with a chip ("On par" or "+n over par"), Share (primary) and Play unlimited, countdown to 08:00 UTC with "Today's shortest ladder appears tomorrow as Yesterday's answer.", today's leaderboard (live) with avatars, links to Yesterday's answer, stats and the full leaderboard. The daily finish sheet shows no shortest ladder; the unlimited one shows "A shortest ladder" as an answer ladder.
+- **Yesterday's answer:** a modal sheet on the daily page, opened from a text button under the puzzle title (with Show result, wrapping as one group) at any time and from the finish sheet, where it stacks above it. `h2` "Yesterday's answer", then "Poople #N: START" in the display face, "The shortest route to POOP took N steps, which is par. Here is one way to get there:" and the answer ladder. None while today's puzzle is #0.
 - **Stats:** four figures (wins, avg extra steps, current streak, best streak), extra-steps distribution with a You / Everyone segmented control (radio inputs, CSS `:has()` switch), today's bar outlined, a plain-sentence comparison.
-- **Server part:** finish sheet in `web/features/play`; stats in `web/services/game` views. Share is the only Rocket component (Web Share API, clipboard fallback). The countdown ticks client-side from a server-rendered `datetime`.
+- **Server part:** finish sheet in `web/core` (`FinishSheet`), filled by `web/features/play` and `web/features/unlimited`; Yesterday's answer in `web/features/play` from `game.Service.YesterdayAnswer`; stats in `web/services/game` views. Share is the only Rocket component (Web Share API, clipboard fallback). The countdown ticks client-side from a server-rendered `datetime`.
 
 ### Standings and leaderboard table
 - **Style:** rank chip, round avatar (32px, 256px source), name, steps, time; the player's row in `mustard-soft` with a "You" tag; first place in mustard. The page uses a real `<table>` with caption and Today / All-time tabs as links with `aria-current`.
@@ -297,7 +298,7 @@ Each component maps to one server-rendered Templ part. Views are full-`<main>` m
 
 ### Do:
 - **Do** draw every ladder with its rails, start rung at the top and the POOP goal at the foot, in that order on every screen size.
-- **Do** compute `tile--match` on the server from the word and POOP's letters; apply it to mini rungs in the finish sheet too.
+- **Do** compute `tile--match` on the server from the word and POOP's letters; apply it to answer ladders in sheets too.
 - **Do** give every tile row hidden text naming the word and how many letters are in place; tiles themselves are `aria-hidden`.
 - **Do** keep focus visible: 3px `focus` ring, `on-board` ring inside the masthead.
 - **Do** label synthetic sample data (players, avatars, times) wherever it appears in prototypes.

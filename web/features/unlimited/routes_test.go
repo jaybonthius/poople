@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -355,9 +356,24 @@ func TestGuessesFollowTheUnlimitedPuzzleAndRevealOnlyAfterFinishing(t *testing.T
 				t.Fatalf("unlimited finish sheet contains %q", absent)
 			}
 		}
-		for _, word := range p.path {
-			if !strings.Contains(html, strings.ToUpper(word)+"</span>") {
-				t.Fatalf("finished view lacks solution word %q", word)
+		// The shortest ladder is drawn top to bottom in the sheet: one rung per word, in order.
+		sheet := html[strings.Index(html, `<dialog id="finish"`):]
+		answer := sheet[strings.Index(sheet, `<ol class="ladder ladder--answer"`)+1:]
+		answer = answer[:strings.Index(answer, "</ol>")]
+		var rungs []string
+		for _, label := range regexp.MustCompile(`<span class="visually-hidden">([^<]*)</span>`).FindAllStringSubmatch(answer, -1) {
+			rungs = append(rungs, label[1])
+		}
+		want := []string{strings.ToUpper(p.start) + ", start word"}
+		for i, word := range p.path[1:] {
+			want = append(want, "Step "+strconv.Itoa(i+1)+": "+strings.ToUpper(word))
+		}
+		if len(rungs) != len(want) {
+			t.Fatalf("answer ladder rungs = %v, want %d rungs %v", rungs, len(want), want)
+		}
+		for i := range want {
+			if !strings.HasPrefix(rungs[i], want[i]) {
+				t.Fatalf("answer ladder rung %d = %q, want %q", i, rungs[i], want[i])
 			}
 		}
 	}

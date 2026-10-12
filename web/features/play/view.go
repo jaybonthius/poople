@@ -24,6 +24,10 @@ type playView struct {
 	Standings game.Standings
 	// SignedIn is true when the viewer has an account.
 	SignedIn bool
+	// Yesterday is the previous daily puzzle's answer when HasYesterday; there
+	// is none while today's puzzle is #0.
+	Yesterday    game.Answer
+	HasYesterday bool
 }
 
 func (v playView) number() string { return strconv.Itoa(v.Game.Puzzle.Number) }
@@ -51,11 +55,22 @@ func (v playView) toastKey() string {
 	return strconv.FormatInt(v.Game.Puzzle.ID, 10) + "-" + strconv.Itoa(v.rejectionSeq())
 }
 
-// result is the finish sheet's summary; par and the solution are set only
-// once the game is finished.
+// result is the finish sheet's summary; par is set only once the game is
+// finished. It carries no solution: today's best route is revealed tomorrow,
+// as Yesterday's answer.
 func (v playView) result() core.FinishResult {
-	return core.FinishResult{Start: v.Game.Puzzle.StartWord, Target: ladder.Target, Steps: v.Game.Steps, Par: v.Game.Par, Solution: v.Game.Solution}
+	return core.FinishResult{Start: v.Game.Puzzle.StartWord, Target: ladder.Target, Steps: v.Game.Steps, Par: v.Game.Par}
 }
+
+// yesterdayTitle is "Poople #N: START" for yesterday's puzzle.
+func (v playView) yesterdayTitle() string {
+	return "Poople #" + strconv.Itoa(v.Yesterday.Puzzle.Number) + ": " + strings.ToUpper(v.Yesterday.Puzzle.StartWord)
+}
+
+// yesterdaySheetEffect opens Yesterday's answer as a modal while
+// $_yesterdayOpen is true and closes it when it turns false. Closing a modal
+// returns focus to the button that opened it.
+const yesterdaySheetEffect = "if ($_yesterdayOpen) { if (!el.open) { el.showModal(); el.focus() } } else if (el.open) el.close()"
 
 // shareText is the spoiler-free result: the puzzle, its route, steps against
 // par and one row per rung, brown where the letter is POOP's in that position.

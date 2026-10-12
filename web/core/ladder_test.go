@@ -204,9 +204,40 @@ func TestToastAnnouncesLostConnectionUntilTheStreamPatches(t *testing.T) {
 	}
 }
 
-func TestMiniWordMatchesTarget(t *testing.T) {
-	html := render(t, core.MiniWord("poss", "poop"))
-	if strings.Count(html, `class="mini-tile tile--match"`) != 2 || strings.Count(html, `class="mini-tile"`) != 2 || !strings.Contains(html, `<span class="visually-hidden">POSS</span>`) {
-		t.Fatalf("mini word=%q", html)
+var answerRungPattern = regexp.MustCompile(`<li class="([^"]*)">(.*?)</li>`)
+
+// The answer ladder lists the route top to bottom, start word first and POOP
+// last, as rungs between rails, matched like the play ladder, with no ids that
+// could clash with the play ladder on the same page.
+func TestAnswerLadderDrawsTheRouteTopToBottom(t *testing.T) {
+	html := render(t, core.AnswerLadder([]string{"fuse", "fuss", "foss", "poss", "poos", "poop"}, "poop"))
+	if !strings.HasPrefix(html, `<ol class="ladder ladder--answer" aria-label="One shortest ladder from FUSE to POOP">`) || strings.Contains(html, " id=") {
+		t.Fatalf("answer ladder = %s", html)
+	}
+	var got []string
+	for _, m := range answerRungPattern.FindAllStringSubmatch(html, -1) {
+		var tiles strings.Builder
+		for _, tile := range tilePattern.FindAllStringSubmatch(m[2], -1) {
+			tiles.WriteString(tile[2])
+			if strings.Contains(tile[1], "tile--match") {
+				tiles.WriteString("*")
+			}
+		}
+		label := regexp.MustCompile(`<span class="visually-hidden">([^<]*)</span>`).FindStringSubmatch(m[2])
+		got = append(got, m[1]+"|"+tiles.String()+"|"+label[1])
+	}
+	want := []string{
+		"rung rung--start|FUSE|FUSE, start word",
+		"rung|FUSS|Step 1: FUSS",
+		"rung|FO*SS|Step 2: FOSS, 1 letter in place",
+		"rung|P*O*SS|Step 3: POSS, 2 letters in place",
+		"rung|P*O*O*S|Step 4: POOS, 3 letters in place",
+		"rung|P*O*O*P*|Step 5: POOP, 4 letters in place",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("answer rungs:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if render(t, core.AnswerLadder(nil, "poop")) != "" {
+		t.Fatal("an empty route draws a ladder")
 	}
 }

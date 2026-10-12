@@ -185,7 +185,9 @@ func TestGuessRejectionsAreStoredAndSequenced(t *testing.T) {
 	}
 }
 
-func TestFinishingRevealsParAndSolutionOnlyAfterward(t *testing.T) {
+// A finished daily game shows par but never a solution while the puzzle is
+// today's; the answer waits for the next day (TestYesterdayAnswer...).
+func TestFinishingRevealsParOnlyAfterwardAndTheDailySolutionNextDay(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	player, other := f.player(t), f.player(t)
@@ -201,8 +203,8 @@ func TestFinishingRevealsParAndSolutionOnlyAfterward(t *testing.T) {
 		f.guess(t, player, puzzle, strings.ToUpper(word), "") // guesses are case-insensitive
 	}
 	view := f.view(t, player, puzzle)
-	if !view.Finished || view.Steps != 5 || view.Par != 5 || !slices.Equal(view.Solution, path) || !slices.Equal(view.Ladder, path) {
-		t.Fatalf("finished view = %+v, want 5 steps, par 5, solution %v", view, path)
+	if !view.Finished || view.Steps != 5 || view.Par != 5 || view.Solution != nil || !slices.Equal(view.Ladder, path) {
+		t.Fatalf("finished view = %+v, want 5 steps, par 5 and no solution while the puzzle is today's", view)
 	}
 	if view.SolveTime != 4*time.Minute {
 		t.Fatalf("solve time = %v, want first to last guess, 4m", view.SolveTime)
@@ -215,6 +217,84 @@ func TestFinishingRevealsParAndSolutionOnlyAfterward(t *testing.T) {
 	}
 	if theirs := f.view(t, other, puzzle); theirs.Finished || theirs.Par != 0 || theirs.Solution != nil || !slices.Equal(theirs.Ladder, []string{"fuse"}) {
 		t.Fatalf("another player's view = %+v", theirs)
+	}
+	f.clock.Set(time.Date(2026, time.October, 12, 7, 59, 59, 0, time.UTC))
+	if again := f.view(t, player, puzzle); again.Solution != nil {
+		t.Fatalf("solution shown before the next puzzle opens: %v", again.Solution)
+	}
+	f.clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
+	if closed := f.view(t, player, puzzle); !slices.Equal(closed.Solution, path) {
+		t.Fatalf("closed puzzle's solution = %v, want %v", closed.Solution, path)
+	}
+}
+
+func TestFinishedUnlimitedGameRevealsItsSolution(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	player := f.player(t)
+	puzzle, err := f.games.StartUnlimited(t.Context(), player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, _ := csw(t).ShortestPath(puzzle.StartWord)
+	for _, word := range path[1:] {
+		f.guess(t, player, puzzle.ID, word, "")
+	}
+	if view := f.view(t, player, puzzle.ID); !view.Finished || view.Par != len(path)-1 || !slices.Equal(view.Solution, path) {
+		t.Fatalf("finished unlimited view = %+v, want solution %v", view, path)
+	}
+}
+
+func (f *fixture) yesterday(t *testing.T) (game.Answer, bool) {
+	t.Helper()
+	answer, ok, err := f.games.YesterdayAnswer(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return answer, ok
+}
+
+// Yesterday's answer is the puzzle before today's: its frozen start word and
+// par and one shortest ladder, switching at 08:00 UTC. An unopened puzzle is
+// created on demand; today's puzzle, and no later one, is never read.
+func TestYesterdayAnswerFollowsTheCalendarAt0800UTC(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	data := csw(t)
+	answer, ok := f.yesterday(t) // #423 is today; nobody opened #422
+	want, _ := data.ShortestPath(data.DailyStart(422))
+	if !ok || answer.Puzzle.Kind != game.Daily || answer.Puzzle.Number != 422 || answer.Puzzle.StartWord != data.DailyStart(422) ||
+		answer.Par != len(want)-1 || !slices.Equal(answer.Solution, want) {
+		t.Fatalf("yesterday on day #423 = %+v, want #422 %v", answer, want)
+	}
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'daily' AND number = 422 AND par = ?", answer.Par); got != 1 {
+		t.Fatal("yesterday's puzzle was not created with its par")
+	}
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'daily' AND number >= 423"); got != 0 {
+		t.Fatalf("YesterdayAnswer created %d puzzles from today on", got)
+	}
+	if again, _ := f.yesterday(t); again.Puzzle != answer.Puzzle {
+		t.Fatalf("second read = %+v, want the same puzzle %+v", again.Puzzle, answer.Puzzle)
+	}
+
+	today := f.daily(t)
+	fuse, _ := data.ShortestPath("fuse")
+	f.clock.Set(time.Date(2026, time.October, 12, 7, 59, 59, 0, time.UTC))
+	if answer, _ := f.yesterday(t); answer.Puzzle.Number != 422 || slices.Contains(answer.Solution, "fuse") {
+		t.Fatalf("yesterday at 07:59:59 = %+v, want #422 without today's FUSE", answer)
+	}
+	f.clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
+	if answer, _ := f.yesterday(t); answer.Puzzle != today || answer.Par != 5 || !slices.Equal(answer.Solution, fuse) {
+		t.Fatalf("yesterday at 08:00 = %+v, want #423 FUSE par 5 %v", answer, fuse)
+	}
+
+	f.clock.Set(time.Date(2025, time.August, 15, 7, 59, 59, 0, time.UTC)) // still #0
+	if answer, ok := f.yesterday(t); ok {
+		t.Fatalf("yesterday during #0 = %+v, want none", answer)
+	}
+	f.clock.Set(time.Date(2025, time.August, 15, 8, 0, 0, 0, time.UTC))
+	if answer, ok := f.yesterday(t); !ok || answer.Puzzle.Number != 0 || answer.Puzzle.StartWord != "dawn" || answer.Par != 4 {
+		t.Fatalf("yesterday during #1 = %+v, want #0 DAWN par 4", answer)
 	}
 }
 
@@ -241,10 +321,13 @@ func TestNewWordListLeavesExistingPuzzlesFrozen(t *testing.T) {
 	for _, word := range path[1:] {
 		f.guess(t, player, today.ID, word, "")
 	}
-	if view := f.view(t, player, today.ID); view.Par != 5 || !slices.Equal(view.Solution, path) {
+	if view := f.view(t, player, today.ID); view.Par != 5 {
 		t.Fatalf("old puzzle view = %+v", view)
 	}
 	f.clock.Set(day423.Add(24 * time.Hour))
+	if answer, _ := f.yesterday(t); answer.Puzzle != today || answer.Par != 5 || !slices.Equal(answer.Solution, path) {
+		t.Fatalf("old puzzle's answer = %+v, want %v from its own list", answer, path)
+	}
 	tomorrow := f.daily(t)
 	if tomorrow.StartWord != "pals" {
 		t.Fatalf("tomorrow = %+v, want pals from the new list", tomorrow)
@@ -253,8 +336,12 @@ func TestNewWordListLeavesExistingPuzzlesFrozen(t *testing.T) {
 	for _, word := range []string{"pads", "pods", "poos", "poop"} {
 		f.guess(t, player, tomorrow.ID, word, "")
 	}
-	if view := f.view(t, player, tomorrow.ID); view.Par != 4 || !slices.Equal(view.Solution, []string{"pals", "pads", "pods", "poos", "poop"}) {
+	if view := f.view(t, player, tomorrow.ID); view.Par != 4 {
 		t.Fatalf("new puzzle view = %+v", view)
+	}
+	f.clock.Set(day423.Add(48 * time.Hour))
+	if answer, _ := f.yesterday(t); answer.Par != 4 || !slices.Equal(answer.Solution, []string{"pals", "pads", "pods", "poos", "poop"}) {
+		t.Fatalf("new puzzle's answer = %+v", answer)
 	}
 }
 

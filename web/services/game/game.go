@@ -76,7 +76,7 @@ type Game struct {
 	Steps        int           // accepted guesses
 	SolveTime    time.Duration // first guess to the guess reaching POOP
 	Par          int           // 0 until finished
-	Solution     []string      // one shortest ladder; nil until finished
+	Solution     []string      // one shortest ladder; nil until finished, and while a daily puzzle is today's
 }
 
 // Service runs game commands and views against the store and notifies the
@@ -104,7 +104,52 @@ func (s *Service) PlayerChanges(playerID int64) <-chan struct{} { return s.playe
 // DailyPuzzle returns today's puzzle, creating it from the current word list
 // the first time anyone opens it.
 func (s *Service) DailyPuzzle(ctx context.Context) (Puzzle, error) {
-	number := ladder.DailyNumber(s.now())
+	return s.dailyPuzzle(ctx, ladder.DailyNumber(s.now()))
+}
+
+// Answer is a closed daily puzzle's best route: its frozen par and one
+// shortest ladder against its frozen list.
+type Answer struct {
+	Puzzle   Puzzle
+	Par      int
+	Solution []string // start word first, POOP last
+}
+
+// YesterdayAnswer returns the daily puzzle before today's with its par and one
+// shortest ladder, creating that puzzle from the current word list if nobody
+// opened it. It returns false while today's puzzle is #0. It never reads
+// today's or a later puzzle.
+func (s *Service) YesterdayAnswer(ctx context.Context) (Answer, bool, error) {
+	number := ladder.DailyNumber(s.now()) - 1
+	if number < 0 {
+		return Answer{}, false, nil
+	}
+	puzzle, err := s.dailyPuzzle(ctx, number)
+	if err != nil {
+		return Answer{}, false, err
+	}
+	answer := Answer{Puzzle: puzzle}
+	err = s.db.Read(ctx, func(conn *sqlite.Conn) error {
+		row, err := zz.OnceGetPuzzle(conn, puzzle.ID)
+		if err != nil {
+			return err
+		}
+		if row == nil {
+			return ErrPuzzleNotFound
+		}
+		answer.Par = int(row.Par)
+		answer.Solution, err = shortestPath(conn, row.ListId, row.StartWord, row.Par)
+		return err
+	})
+	if err != nil {
+		return Answer{}, false, err
+	}
+	return answer, true, nil
+}
+
+// dailyPuzzle returns daily puzzle number, creating it from the current word
+// list the first time anyone opens it.
+func (s *Service) dailyPuzzle(ctx context.Context, number int) (Puzzle, error) {
 	puzzle := Puzzle{Kind: Daily, Number: number}
 	var found *zz.FindDailyPuzzleRes
 	if err := s.db.Read(ctx, func(conn *sqlite.Conn) (err error) {
@@ -299,8 +344,9 @@ func (s *Service) Guess(ctx context.Context, playerID, puzzleID int64, word stri
 	return rejection, nil
 }
 
-// GameView reads the player's game on the puzzle. Par and a shortest solution
-// are included only once the player has finished.
+// GameView reads the player's game on the puzzle. Par is included only once
+// the player has finished, and a shortest solution too unless the puzzle is
+// still today's daily puzzle: a daily answer waits for YesterdayAnswer.
 func (s *Service) GameView(ctx context.Context, playerID, puzzleID int64) (Game, error) {
 	var view Game
 	err := s.db.Read(ctx, func(conn *sqlite.Conn) error {
@@ -340,6 +386,9 @@ func (s *Service) GameView(ctx context.Context, playerID, puzzleID int64) (Game,
 			view.SolveTime = time.Duration(*game.FinishedAt-*game.StartedAt) * time.Millisecond
 		}
 		view.Par = int(puzzle.Par)
+		if Kind(puzzle.Kind) == Daily && view.Puzzle.Number >= ladder.DailyNumber(s.now()) {
+			return nil
+		}
 		view.Solution, err = shortestPath(conn, puzzle.ListId, puzzle.StartWord, puzzle.Par)
 		return err
 	})

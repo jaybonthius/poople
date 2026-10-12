@@ -118,8 +118,9 @@ func (h *handlers) state(ctx context.Context, w http.ResponseWriter, r *http.Req
 	})
 }
 
-// read returns the viewer's view of today's puzzle and the change channels,
-// taken before the reads, that invalidate it. It never creates a player.
+// read returns the viewer's view of today's puzzle and yesterday's answer, and
+// the change channels, taken before the reads, that invalidate it. It never
+// creates a player.
 func (h *handlers) read(ctx context.Context, viewer *identity.Viewer) (playView, []<-chan struct{}, error) {
 	var v playView
 	puzzle, err := h.games.DailyPuzzle(ctx)
@@ -140,6 +141,9 @@ func (h *handlers) read(ctx context.Context, viewer *identity.Viewer) (playView,
 		if v.Standings, err = h.games.Standings(ctx, puzzle.ID, playerID); err != nil {
 			return v, nil, err
 		}
+	}
+	if v.Yesterday, v.HasYesterday, err = h.games.YesterdayAnswer(ctx); err != nil {
+		return v, nil, err
 	}
 	v.NextIn = ladder.DailyOpens(puzzle.Number + 1).Sub(h.games.Now())
 	return v, changed, nil
