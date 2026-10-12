@@ -89,7 +89,7 @@
   }
 
   .button--small {
-    min-block-size: 2.5rem;
+    min-block-size: 2.75rem;
     padding-inline: var(--space-3);
     font-size: var(--text-sm);
   }

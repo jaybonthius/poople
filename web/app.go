@@ -119,13 +119,7 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 		})
 	})
 	router.Use(identity.WithPlayer(users, identityErrorPage))
-	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if navigationNotFound(r) {
-			core.WriteErrorPage(w, r, http.StatusNotFound)
-			return
-		}
-		http.NotFound(w, r)
-	})
+	router.NotFound(notFound)
 	core.Routes(ctx, router)
 	auth.Routes(router, users, setup)
 	account.Routes(ctx, router, users, maxFPS)

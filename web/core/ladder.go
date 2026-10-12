@@ -89,14 +89,45 @@ func jsString(s string) string {
 	return string(quoted)
 }
 
+// scrollIntoViewExpr brings a newly drawn rung into the board's view.
+const scrollIntoViewExpr = "el.scrollIntoView({block: 'nearest'})"
+
+// reachedRungInit clears letters typed after the last guess, so nothing is
+// left to post once the ladder reaches the target, and shows the reached rung.
+const reachedRungInit = "$guess = ''; " + scrollIntoViewExpr
+
+// rejectedGuessExpr is true while the input rung still holds the refused word.
+const rejectedGuessExpr = "$guess !== '' && $guess === $_rejectedGuess"
+
+// guessBusyExpr marks Enter busy while a guess posted from the keyboard is in
+// flight, including its retries.
+const guessBusyExpr = "if (evt.detail.el?.closest?.('.keyboard') === el) { " +
+	"if (evt.detail.type === 'started') el.guessesInFlight = (el.guessesInFlight ?? 0) + 1; " +
+	"else if (evt.detail.type === 'finished') el.guessesInFlight = Math.max(0, (el.guessesInFlight ?? 0) - 1); " +
+	"$_guessBusy = (el.guessesInFlight ?? 0) > 0 }"
+
+// connectionExpr notes a lost connection when any request retries and clears it
+// when the server next patches the page, which the live stream does on reconnect.
+const connectionExpr = "if (evt.detail.type === 'retrying' || evt.detail.type === 'retries-failed') $_connectionLost = true; " +
+	"else if (evt.detail.type === 'datastar-patch-elements') $_connectionLost = false"
+
+// toastSeenKey is the key of the message a page loads with, "" for none.
+func toastSeenKey(message, key string) string {
+	if message == "" {
+		return ""
+	}
+	return key
+}
+
 func submitGuessExpr(guessURL string) string {
 	return "$guess.length === 4 && @post(" + jsString(guessURL) + ")"
 }
 
-// keydownExpr types on the physical keyboard unless focus is on another control
-// or a modifier is held; Enter and Backspace keep their usual meaning elsewhere.
+// keydownExpr types on the physical keyboard unless the keyboard is inert, focus
+// is on another control or a modifier is held; Enter and Backspace keep their
+// usual meaning elsewhere.
 func keydownExpr(guessURL string) string {
-	return "if (!evt.ctrlKey && !evt.metaKey && !evt.altKey && !evt.isComposing && " +
+	return "if (!el.inert && !evt.ctrlKey && !evt.metaKey && !evt.altKey && !evt.isComposing && " +
 		"(evt.target.closest('.keyboard') || !evt.target.closest('a, button, input, select, textarea, summary, dialog, [contenteditable]'))) { " +
 		"if (evt.key === 'Enter') { evt.preventDefault(); " + submitGuessExpr(guessURL) + " } " +
 		"else if (evt.key === 'Backspace') { evt.preventDefault(); $guess = $guess.slice(0, -1) } " +

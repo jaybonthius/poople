@@ -45,6 +45,12 @@ func (v playView) rejectionSeq() int {
 	return int(v.Game.RejectionSeq)
 }
 
+// toastKey names the rejection toast per puzzle and rejection, so a new
+// puzzle's first rejection is not mistaken for the one the page loaded with.
+func (v playView) toastKey() string {
+	return strconv.FormatInt(v.Game.Puzzle.ID, 10) + "-" + strconv.Itoa(v.rejectionSeq())
+}
+
 // result is the finish sheet's summary; par and the solution are set only
 // once the game is finished.
 func (v playView) result() core.FinishResult {

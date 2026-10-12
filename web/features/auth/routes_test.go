@@ -94,10 +94,13 @@ func redirected(w *httptest.ResponseRecorder, path string) bool {
 	return w.Code == 200 && strings.Contains(w.Body.String(), "window.location.href = "+strconv.Quote(path))
 }
 
-func refused(w *httptest.ResponseRecorder, message string) bool {
+// refused reports an error patch naming field ("" for the whole form). Only a
+// password error clears the password; others keep what the player typed.
+func refused(w *httptest.ResponseRecorder, field, message string) bool {
 	body := w.Body.String()
 	return w.Code == 200 && strings.Contains(body, "datastar-patch-signals") && strings.Contains(body, message) &&
-		strings.Contains(body, `"password":""`) && !strings.Contains(body, "window.location")
+		strings.Contains(body, `"_authField":"`+field+`"`) &&
+		strings.Contains(body, `"password":""`) == (field == "password") && !strings.Contains(body, "window.location")
 }
 
 func TestSetupSignUpLogInAndLogOut(t *testing.T) {
@@ -111,7 +114,7 @@ func TestSetupSignUpLogInAndLogOut(t *testing.T) {
 	if w := f.get(setupPath, ""); w.Code != 200 || !strings.Contains(w.Body.String(), `name="setupToken" value="`+f.setupToken+`"`) || !strings.Contains(w.Body.String(), `class="form-surface"`) {
 		t.Fatalf("setup page status=%d", w.Code)
 	}
-	if w := f.post("/signup", "", map[string]string{"username": "early", "password": password}); !refused(w, "Sign-up opens once the admin has set up Poople.") {
+	if w := f.post("/signup", "", map[string]string{"username": "early", "password": password}); !refused(w, "", "Sign-up opens once the admin has set up Poople.") {
 		t.Fatalf("sign-up before setup: %s", w.Body)
 	}
 	w := f.post("/setup", "", map[string]string{"setupToken": f.setupToken, "username": "Admin", "password": password})
@@ -122,7 +125,7 @@ func TestSetupSignUpLogInAndLogOut(t *testing.T) {
 	if w := f.get(setupPath, ""); w.Code != http.StatusNotFound {
 		t.Fatal("setup page available after setup")
 	}
-	if w := f.post("/setup", "", map[string]string{"setupToken": f.setupToken, "username": "second", "password": password}); !refused(w, "Setup link is unavailable") {
+	if w := f.post("/setup", "", map[string]string{"setupToken": f.setupToken, "username": "second", "password": password}); !refused(w, "", "Setup link is unavailable") {
 		t.Fatalf("setup reused: %s", w.Body)
 	}
 
@@ -137,10 +140,10 @@ func TestSetupSignUpLogInAndLogOut(t *testing.T) {
 	if !redirected(w, "/") || mira == nil {
 		t.Fatalf("sign-up: %s", w.Body)
 	}
-	if w := f.post("/signup", "", map[string]string{"username": "MIRA", "password": password}); !refused(w, "That username is taken. Try another.") || sessionCookie(t, w) != nil {
+	if w := f.post("/signup", "", map[string]string{"username": "MIRA", "password": password}); !refused(w, "username", "That username is taken. Try another.") || sessionCookie(t, w) != nil {
 		t.Fatalf("duplicate sign-up: %s", w.Body)
 	}
-	if w := f.post("/signup", "", map[string]string{"username": "ollie", "password": "short"}); !refused(w, "Password must be 10–128 characters.") {
+	if w := f.post("/signup", "", map[string]string{"username": "ollie", "password": "short"}); !refused(w, "password", "Password must be 10–128 characters.") {
 		t.Fatalf("short password: %s", w.Body)
 	}
 	if w := f.get("/signup", mira.Value); w.Code != http.StatusSeeOther {
@@ -148,7 +151,7 @@ func TestSetupSignUpLogInAndLogOut(t *testing.T) {
 	}
 
 	for _, attempt := range []map[string]string{{"username": "mira", "password": "wrong password"}, {"username": "nobody", "password": password}} {
-		if w := f.post("/login", "", attempt); !refused(w, "Invalid username or password.") || sessionCookie(t, w) != nil {
+		if w := f.post("/login", "", attempt); !refused(w, "password", "Invalid username or password.") || sessionCookie(t, w) != nil {
 			t.Fatalf("bad log-in %v: %s", attempt, w.Body)
 		}
 	}
@@ -175,12 +178,12 @@ func TestLoginIsRateLimitedPerClientSoNobodyCanLockOutAnAccount(t *testing.T) {
 	f.postFrom(owner, nil, "/setup", "", map[string]string{"setupToken": f.setupToken, "username": "Admin", "password": password})
 	// Varying usernames does not escape the limit: each attempt costs a hash.
 	for i := range 5 {
-		if w := f.postFrom(attacker, nil, "/login", "", map[string]string{"username": "user" + strconv.Itoa(i), "password": "wrong password"}); !refused(w, "Invalid username or password.") {
+		if w := f.postFrom(attacker, nil, "/login", "", map[string]string{"username": "user" + strconv.Itoa(i), "password": "wrong password"}); !refused(w, "password", "Invalid username or password.") {
 			t.Fatal(w.Body.String())
 		}
 	}
 	for _, username := range []string{"another", "admin"} {
-		if w := f.postFrom(attacker, nil, "/login", "", map[string]string{"username": username, "password": "wrong password"}); !refused(w, "Too many attempts.") {
+		if w := f.postFrom(attacker, nil, "/login", "", map[string]string{"username": username, "password": "wrong password"}); !refused(w, "", "Too many attempts.") {
 			t.Fatalf("sixth attempt as %s: %s", username, w.Body)
 		}
 	}
@@ -201,17 +204,17 @@ func TestTrustedProxyKeysRateLimitsByForwardedClient(t *testing.T) {
 	for i := range 5 {
 		attempt(direct, "198.51.100."+strconv.Itoa(i))
 	}
-	if w := attempt(direct, "198.51.100.99"); !refused(w, "Too many attempts.") {
+	if w := attempt(direct, "198.51.100.99"); !refused(w, "", "Too many attempts.") {
 		t.Fatalf("without --trusted-proxy, X-Forwarded-For chose the rate-limit key: %s", w.Body)
 	}
 	proxied := newFixture(t, web.WithTrustedProxy())
 	for range 5 {
 		attempt(proxied, "198.51.100.1")
 	}
-	if w := attempt(proxied, "198.51.100.1"); !refused(w, "Too many attempts.") {
+	if w := attempt(proxied, "198.51.100.1"); !refused(w, "", "Too many attempts.") {
 		t.Fatalf("forwarded client not limited: %s", w.Body)
 	}
-	if w := attempt(proxied, "198.51.100.2"); !refused(w, "Invalid username or password.") {
+	if w := attempt(proxied, "198.51.100.2"); !refused(w, "password", "Invalid username or password.") {
 		t.Fatalf("another forwarded client shares the proxy's limit: %s", w.Body)
 	}
 }
@@ -233,11 +236,11 @@ func TestAccountCommandsRefuseCrossOriginAndUnboundedRequests(t *testing.T) {
 	form.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
 	f.handler.ServeHTTP(w, form)
-	if !refused(w, "Invalid request. Try again.") {
+	if !refused(w, "", "Invalid request. Try again.") {
 		t.Fatalf("form-encoded log-in: %s", w.Body)
 	}
 	huge := f.post("/signup", "", map[string]string{"username": "mira", "password": strings.Repeat("a", 20<<10)})
-	if !refused(huge, "Invalid request. Try again.") {
+	if !refused(huge, "", "Invalid request. Try again.") {
 		t.Fatalf("oversized body: %s", huge.Body)
 	}
 }
@@ -264,12 +267,19 @@ func TestResetLinkSetsPasswordAndSignsIn(t *testing.T) {
 	resetPath := "/reset?" + url.Values{"token": {token}}.Encode()
 	if w := f.get(resetPath, ""); w.Code != 200 || !strings.Contains(w.Body.String(), "Choose a new password for mira.") {
 		t.Fatal("reset page missing")
+	} else {
+		// Password managers pair the new password with the account's username.
+		for _, want := range []string{`<label for="password">New password</label>`, `<input type="text" name="username" value="mira" autocomplete="username" hidden>`, `autocomplete="new-password"`} {
+			if !strings.Contains(w.Body.String(), want) {
+				t.Fatalf("reset page missing %q", want)
+			}
+		}
 	}
 	w := f.post("/reset", "", map[string]string{"resetToken": token, "password": "a brand new password"})
 	if !redirected(w, "/") || sessionCookie(t, w) == nil {
 		t.Fatalf("reset: %s", w.Body)
 	}
-	if w := f.post("/reset", "", map[string]string{"resetToken": token, "password": "another new password"}); !refused(w, "This reset link has expired or was already used.") {
+	if w := f.post("/reset", "", map[string]string{"resetToken": token, "password": "another new password"}); !refused(w, "", "This reset link has expired or was already used.") {
 		t.Fatalf("reset reused: %s", w.Body)
 	}
 	if w := f.post("/login", "", map[string]string{"username": "mira", "password": "a brand new password"}); !redirected(w, "/") {

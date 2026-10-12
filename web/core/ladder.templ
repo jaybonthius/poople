@@ -1,7 +1,5 @@
 package core
 
-import "strconv"
-
 // Ladder draws the play board from plain values. start is the start word,
 // rungs are the accepted guesses in order and target is the goal (POOP); words
 // are case-insensitive and drawn in capitals. A tile is matched (wood) when its
@@ -12,15 +10,17 @@ import "strconv"
 // opts.Input), the dashed gap and the dashed goal rung; once it is, the last
 // rung is drawn as reached. The input rung shows the letters of the $guess
 // signal (up to four lower-case letters, declared here if missing), keeps the
-// browser's copy across morphs and clears $guess when the ladder grows.
+// browser's copy across morphs and clears $guess when the ladder grows. The
+// input rung, and the reached rung once the game ends, scroll into view when
+// they appear so a long ladder never hides the row being typed.
 templ Ladder(start string, rungs []string, target string, opts LadderOptions) {
 	<ol class="ladder" aria-label={ "Your ladder from " + upper(start) + " to " + upper(target) } data-signals:guess__ifmissing="''">
-		@wordRung(rungID(0), "rung rung--start", start, target, upper(start)+", start word")
+		@wordRung(rungID(0), "rung rung--start", start, target, upper(start)+", start word", "")
 		for i, word := range rungs {
 			if i == len(rungs)-1 && reached(rungs, target) {
-				@wordRung(rungID(i+1), rungClass("rung rung--reached", opts.Fresh), word, target, upper(word)+", reached")
+				@wordRung(rungID(i+1), rungClass("rung rung--reached", opts.Fresh), word, target, upper(word)+", reached", reachedRungInit)
 			} else {
-				@wordRung(rungID(i+1), rungClass("rung", opts.Fresh && i == len(rungs)-1), word, target, rungLabel(word, target))
+				@wordRung(rungID(i+1), rungClass("rung", opts.Fresh && i == len(rungs)-1), word, target, rungLabel(word, target), "")
 			}
 		}
 		if !reached(rungs, target) {
@@ -38,8 +38,15 @@ templ Ladder(start string, rungs []string, target string, opts LadderOptions) {
 	</ol>
 }
 
-templ wordRung(id, class, word, target, label string) {
-	<li id={ id } class={ class }>
+// wordRung draws an accepted word; a non-empty init runs when the rung appears.
+templ wordRung(id, class, word, target, label, init string) {
+	<li
+		id={ id }
+		class={ class }
+		if init != "" {
+			data-init={ init }
+		}
+	>
 		for _, tile := range letterTiles(word, target) {
 			<span class={ "tile", templ.KV("tile--match", tile.Match) } aria-hidden="true">{ tile.Letter }</span>
 		}
@@ -49,21 +56,23 @@ templ wordRung(id, class, word, target, label string) {
 
 // inputRung is never morphed while its id stands, so the browser keeps the
 // letters it drew from $guess. A new position clears $guess; a new rejection
-// records the refused word and stays tomato until the player edits it.
+// records the refused word and stays tomato until the player edits it. A page
+// load starts with an empty $guess, so a stored rejection does not turn the
+// empty row tomato or replay its wriggle.
 templ inputRung(position, rejection int) {
 	if rejection > 0 {
 		<li
 			id={ inputRungID(position, rejection) }
-			class="rung rung--input rung--rejected"
+			class="rung rung--input"
 			data-ignore-morph
-			data-init="$_rejectedGuess = $guess"
-			data-class:rung--rejected="$guess === $_rejectedGuess"
+			data-init={ "$_rejectedGuess = $guess; " + scrollIntoViewExpr }
+			data-class:rung--rejected={ rejectedGuessExpr }
 		>
 			@inputTiles()
-			<span class="visually-hidden" data-text="'Your next word: ' + ($guess ? $guess.toUpperCase().split('').join(' ') : 'empty') + ($guess === $_rejectedGuess ? ', rejected' : '')">Your next word, rejected</span>
+			<span class="visually-hidden" data-text={ "'Your next word: ' + ($guess ? $guess.toUpperCase().split('').join(' ') : 'empty') + (" + rejectedGuessExpr + " ? ', rejected' : '')" }>Your next word: empty</span>
 		</li>
 	} else {
-		<li id={ inputRungID(position, 0) } class="rung rung--input" data-ignore-morph data-init="$guess = ''">
+		<li id={ inputRungID(position, 0) } class="rung rung--input" data-ignore-morph data-init={ "$guess = ''; " + scrollIntoViewExpr }>
 			@inputTiles()
 			<span class="visually-hidden" data-text="'Your next word: ' + ($guess ? $guess.toUpperCase().split('').join(' ') : 'empty')">Your next word: empty</span>
 		</li>
@@ -90,9 +99,21 @@ templ MiniWord(word, target string) {
 // Keyboard is the on-screen keyboard. Letter keys append to $guess (up to four
 // letters), Delete removes the last letter and Enter posts to guessURL once
 // four letters are typed; Datastar sends $guess as the "guess" signal. The
-// physical keyboard does the same unless focus is on another control.
-templ Keyboard(guessURL string) {
-	<section class="keyboard" aria-label="Keyboard" data-signals:guess__ifmissing="''" data-on:keydown__window={ keydownExpr(guessURL) }>
+// physical keyboard does the same unless focus is on another control. Enter
+// shows busy while a guess is in flight. A finished game makes the keyboard
+// inert, so neither its keys nor the physical keyboard post guesses.
+templ Keyboard(guessURL string, finished bool) {
+	<section
+		class="keyboard"
+		aria-label="Keyboard"
+		if finished {
+			inert
+		}
+		data-signals:guess__ifmissing="''"
+		data-signals:_guess-busy__ifmissing="false"
+		data-on:keydown__window={ keydownExpr(guessURL) }
+		data-on:datastar-fetch={ guessBusyExpr }
+	>
 		<div class="keyboard-row">
 			@letterKeys(keyboardRows[0])
 		</div>
@@ -100,7 +121,7 @@ templ Keyboard(guessURL string) {
 			@letterKeys(keyboardRows[1])
 		</div>
 		<div class="keyboard-row">
-			<button type="button" class="key key--wide key--enter" data-on:click={ submitGuessExpr(guessURL) }>Enter</button>
+			<button type="button" class="key key--wide key--enter" data-attr:aria-busy="$_guessBusy ? 'true' : false" data-on:click={ submitGuessExpr(guessURL) }>Enter</button>
 			@letterKeys(keyboardRows[2])
 			<button type="button" class="key key--wide" aria-label="Delete letter" data-on:click="$guess = $guess.slice(0, -1)"><svg class="icon" aria-hidden="true"><use href="#i-backspace"></use></svg></button>
 		</div>
@@ -114,12 +135,24 @@ templ letterKeys(letters string) {
 }
 
 // Toast is the polite status region for messages such as "Not in word list".
-// Render it on every view, with an empty message when there is nothing to say;
-// seq keys the message so a repeated message animates in again.
-templ Toast(message string, seq int) {
-	<div class="toast-region" role="status">
+// Render it on every view, with an empty message when there is nothing to say.
+// key names the message (unique per game and rejection) so a new message
+// animates in. The message the page loaded with stays hidden: the region
+// remembers it in $_toastSeen, so a reload does not replay an old rejection.
+//
+// The region also says "Connection lost. Retrying…" while any request is
+// retrying, until the next view arrives from the live stream.
+templ Toast(message, key string) {
+	<div
+		class="toast-region"
+		role="status"
+		data-signals:_toast-seen__ifmissing={ jsString(toastSeenKey(message, key)) }
+		data-signals:_connection-lost__ifmissing="false"
+		data-on:datastar-fetch={ connectionExpr }
+	>
 		if message != "" {
-			<p id={ "toast-" + strconv.Itoa(seq) } class="toast">{ message }</p>
+			<p id={ "toast-" + key } class="toast" style="display: none" data-show={ "$_toastSeen !== " + jsString(key) }>{ message }</p>
 		}
+		<p class="toast toast--steady" style="display: none" data-show="$_connectionLost" data-text="$_connectionLost ? 'Connection lost. Retrying…' : ''"></p>
 	</div>
 }

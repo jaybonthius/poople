@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+// finishSheetEffect opens the finish sheet as a modal and focuses it while
+// $_finishClosed is false, and closes it when it turns true.
+const finishSheetEffect = "if ($_finishClosed) { el.open && el.close() } else if (!el.open) { el.showModal(); el.focus() }"
+
+// finishSheetClosed records a close from any source (Close, Escape, backdrop)
+// and moves focus to Show result once it is shown.
+const finishSheetClosed = "$_finishClosed = true; requestAnimationFrame(() => document.getElementById('show-result')?.focus())"
+
+// finishSheetBackdropClick closes the sheet on a click outside its box: a modal
+// dialog receives clicks on its ::backdrop as clicks on itself.
+const finishSheetBackdropClick = "if (evt.target === el) { const box = el.getBoundingClientRect(); " +
+	"if (evt.clientX < box.left || evt.clientX > box.right || evt.clientY < box.top || evt.clientY > box.bottom) el.close() }"
+
 // FinishResult is a finished game as the finish sheet draws it. Build it only
 // once the player has finished: it carries par and a shortest solution.
 type FinishResult struct {

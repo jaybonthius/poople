@@ -145,7 +145,7 @@
   .segmented label {
     display: grid;
     place-items: center;
-    min-block-size: 2.5rem;
+    min-block-size: 2.75rem;
     padding-inline: var(--space-3);
     border-radius: calc(var(--radius-control) - 2px);
     color: var(--ink-muted);
@@ -162,7 +162,7 @@
 
   .segmented label:has(input:checked) {
     background: var(--surface);
-    box-shadow: var(--shadow-raise);
+    box-shadow: inset 0 -3px 0 var(--mustard), var(--shadow-raise);
     color: var(--ink);
   }
 

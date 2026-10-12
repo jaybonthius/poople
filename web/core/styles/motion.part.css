@@ -34,7 +34,11 @@
         toast-out var(--duration-fast) var(--ease-in) var(--toast-hold) forwards;
     }
 
-    .sheet-scrim {
+    .toast--steady {
+      animation: toast-in var(--duration-fast) var(--ease-out);
+    }
+
+    .sheet::backdrop {
       animation: fade-in var(--duration-sheet) var(--ease-out) both;
     }
 
@@ -63,6 +67,10 @@
   @media (prefers-reduced-motion: reduce) {
     .toast {
       animation: toast-out 1ms linear calc(var(--toast-hold) + 1s) forwards;
+    }
+
+    .toast--steady {
+      animation: none;
     }
   }
 

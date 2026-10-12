@@ -217,7 +217,7 @@ func View(v unlimitedView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = core.Keyboard("/unlimited/guess").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = core.Keyboard("/unlimited/guess", v.Game.Finished).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -225,7 +225,7 @@ func View(v unlimitedView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = core.Toast(v.Game.Rejection.Message(), v.rejectionSeq()).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = core.Toast(v.Game.Rejection.Message(), v.toastKey()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

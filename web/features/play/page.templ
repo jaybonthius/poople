@@ -40,8 +40,8 @@ templ View(v playView) {
 		<div class="board">
 			@core.Ladder(v.Game.Puzzle.StartWord, v.Game.Ladder[1:], ladder.Target, core.LadderOptions{Input: !v.Game.Finished, Fresh: v.Fresh, Rejection: v.rejectionSeq()})
 		</div>
-		@core.Keyboard("/play/guess")
-		@core.Toast(v.Game.Rejection.Message(), v.rejectionSeq())
+		@core.Keyboard("/play/guess", v.Game.Finished)
+		@core.Toast(v.Game.Rejection.Message(), v.toastKey())
 		if v.Game.Finished {
 			@finishSheet(v)
 		}

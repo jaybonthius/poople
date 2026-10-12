@@ -17,7 +17,9 @@ templ Page(admin *identity.Account, view templ.Component, statePath string) {
 }
 
 // View renders <main> from the committed account list, plus a reset link only
-// while the request URL carries it.
+// while the request URL carries it. Once drawn, the link's token is removed
+// from the address bar and history, so it is not shown again after a reload or
+// once the admin leaves the page.
 templ View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset, notice string) {
 	<main id="main" class="page" data-signals__ifmissing="{_adminError: ''}">
 		<div class="page-heading">
@@ -43,10 +45,10 @@ templ View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset
 						value={ issued.Path }
 						aria-describedby="reset-hint"
 						data-ignore-morph
-						data-init="el.value = new URL(el.value, window.location.origin).href"
+						data-init="el.value = new URL(el.value, window.location.origin).href; history.replaceState(history.state, '', '/admin/users')"
 						data-on:click="el.select()"
 					/>
-					<p class="field-hint" id="reset-hint">Works once, for 24 hours. It can't be shown again after you leave this page.</p>
+					<p class="field-hint" id="reset-hint">Works once, for 24 hours. Copy it now: it won't be shown again once you reload or leave this page.</p>
 				</div>
 				<a class="button" href="/admin/users">Done</a>
 			</section>
@@ -74,7 +76,7 @@ templ View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset
 							<button type="submit" class="button button--small" aria-label={ "Issue a password reset link for " + account.Username }>Reset link</button>
 						</form>
 						if account.AvatarHash != "" {
-							<button type="button" class="button button--small" aria-label={ "Remove " + account.Username + "'s picture" } data-on:click={ commandAction(account.ID, "avatar/remove", "") }>Remove picture</button>
+							<button type="button" class="button button--small" aria-label={ "Remove picture for " + account.Username } data-on:click={ commandAction(account.ID, "avatar/remove", "") }>Remove picture</button>
 						}
 						if account.ID != adminID {
 							<button type="button" class="button button--small button--danger" aria-label={ "Delete " + account.Username + "'s account" } data-on:click={ commandAction(account.ID, "delete", "Delete "+account.Username+"'s account? Their games stay, without a name.") }>Delete</button>

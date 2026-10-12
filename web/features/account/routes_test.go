@@ -285,6 +285,51 @@ func TestPasswordChangeRevokesOtherSessions(t *testing.T) {
 	}
 }
 
+// The account stream also patches the masthead's account link, so a new or
+// removed picture shows there without a reload; the picker's label follows it.
+func TestAccountStreamPatchesMastheadPicture(t *testing.T) {
+	f := newFixture(t)
+	if page := f.page("/account", f.mira).Body.String(); !strings.Contains(page, `<label class="button" for="avatar-file">Choose picture</label>`) || !strings.Contains(page, `class="avatar avatar--empty`) {
+		t.Fatal("account without a picture must offer to choose one")
+	}
+	server := httptest.NewServer(f.handler)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	request, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/account/state", nil)
+	request.Header.Set("Datastar-Request", "true")
+	request.AddCookie(&http.Cookie{Name: identity.SessionCookie, Value: f.mira})
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	events := bufio.NewReader(response.Body)
+	nextView := func() string {
+		for event := readEvent(events); event != ""; event = readEvent(events) {
+			if strings.Contains(event, `<main id="main"`) {
+				return event
+			}
+		}
+		t.Fatal("stream ended before rendering")
+		return ""
+	}
+	if first := nextView(); !strings.Contains(first, `<a id="masthead-account" class="nav-link" href="/account"`) || strings.Contains(first, `src="/avatars/`) {
+		t.Fatalf("first view has no pictureless masthead link: %s", first)
+	}
+	if w := f.upload(t, f.mira, map[string][]byte{"avatar": pngImage(t, 64, 64)}); w.Code != http.StatusNoContent {
+		t.Fatalf("upload: %d %s", w.Code, w.Body)
+	}
+	view := nextView()
+	masthead := view[strings.Index(view, `<a id="masthead-account"`):strings.Index(view, `<main id="main"`)]
+	if !strings.Contains(masthead, `<img class="avatar" src="/avatars/`) {
+		t.Fatalf("masthead does not show the new picture: %s", masthead)
+	}
+	if !strings.Contains(view, `<label class="button" for="avatar-file">Change picture</label>`) {
+		t.Fatal("picker still offers to choose a first picture")
+	}
+}
+
 func TestPasswordChangeIsRateLimited(t *testing.T) {
 	f := newFixture(t)
 	var last *httptest.ResponseRecorder

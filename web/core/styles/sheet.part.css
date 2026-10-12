@@ -1,14 +1,7 @@
 /* Sheets: finish (verdict, route, solution, share, countdown) and stats shells. */
 
 @layer components {
-  /* Sheet: finish and stats. A <dialog> anchored to the bottom on phones. */
-  .sheet-scrim {
-    position: fixed;
-    inset: 0;
-    z-index: var(--layer-scrim);
-    background: var(--scrim);
-  }
-
+  /* Sheet: finish and stats. A modal <dialog> anchored to the bottom on phones. */
   .sheet {
     position: fixed;
     inset-inline: 0;
@@ -29,6 +22,15 @@
     background: var(--surface);
     box-shadow: var(--shadow-sheet);
     color: var(--ink);
+  }
+
+  /* Keep a closed dialog hidden; .sheet's display would otherwise override it. */
+  .sheet:not([open]) {
+    display: none;
+  }
+
+  .sheet::backdrop {
+    background: var(--scrim);
   }
 
   .sheet-header {
@@ -117,7 +119,7 @@
   }
 
   .result-link:hover {
-    color: var(--wood);
+    color: var(--wood-ink);
   }
 
   /* Finish: verdict stamp, route, score */
@@ -143,7 +145,7 @@
   }
 
   .verdict--perfect {
-    color: var(--wood);
+    color: var(--wood-ink);
   }
 
   .result-route {
@@ -178,14 +180,14 @@
 
   .par-delta--even {
     background: var(--wood-soft);
-    color: var(--wood);
+    color: var(--wood-ink);
   }
 
   /* One shortest solution, as mini rungs read left to right, row by row */
   .solution {
     display: grid;
     grid-template-columns: repeat(3, auto);
-    justify-content: center;
+    justify-content: start;
     gap: var(--space-3) var(--space-5);
   }
 

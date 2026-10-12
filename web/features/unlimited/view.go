@@ -2,6 +2,7 @@ package unlimited
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"poople/ladder"
 	"poople/web/core"
@@ -31,6 +32,12 @@ func (v unlimitedView) rejectionSeq() int {
 		return 0
 	}
 	return int(v.Game.RejectionSeq)
+}
+
+// toastKey names the rejection toast per puzzle and rejection, so a new
+// puzzle's first rejection is not mistaken for the one the page loaded with.
+func (v unlimitedView) toastKey() string {
+	return strconv.FormatInt(v.Game.Puzzle.ID, 10) + "-" + strconv.Itoa(v.rejectionSeq())
 }
 
 // result is the finish sheet's summary; par and the solution are set only

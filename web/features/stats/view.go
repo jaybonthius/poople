@@ -3,6 +3,7 @@ package stats
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"poople/web/services/game"
 
@@ -88,8 +89,24 @@ func (v statsView) comparison() string {
 	if others == 0 {
 		return "You’re the first to solve " + v.number() + "."
 	}
-	return fmt.Sprintf("Of the %s who solved %s, %d did better, %d tied with you and %d used more steps.",
-		plural(others, "other player", "other players"), v.number(), s.Better, s.Tied, s.Worse)
+	var clauses []string
+	for _, clause := range []struct {
+		n    int
+		text string
+	}{{s.Better, "did better"}, {s.Tied, "tied with you"}, {s.Worse, "used more steps"}} {
+		if clause.n > 0 {
+			clauses = append(clauses, strconv.Itoa(clause.n)+" "+clause.text)
+		}
+	}
+	return fmt.Sprintf("Of the %s who solved %s, %s.", plural(others, "other player", "other players"), v.number(), listJoin(clauses))
+}
+
+// listJoin joins items as "a", "a and b" or "a, b and c".
+func listJoin(items []string) string {
+	if len(items) < 2 {
+		return strings.Join(items, "")
+	}
+	return strings.Join(items[:len(items)-1], ", ") + " and " + items[len(items)-1]
 }
 
 func extraLabel(extra int) string {

@@ -132,7 +132,7 @@ func (h *handlers) login(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(signals.Username)
 	// Bound the input before Argon2 sees it; identity owns credential rules.
 	if len(username) == 0 || len(username) > 64 || !utf8.ValidString(username) || len(signals.Password) > 512 || !utf8.ValidString(signals.Password) {
-		patchError(w, r, "Invalid username or password.")
+		patchFieldError(w, r, "password", "Invalid username or password.")
 		return
 	}
 	// Limit by client, not username, so nobody can lock another player out.
@@ -141,7 +141,7 @@ func (h *handlers) login(w http.ResponseWriter, r *http.Request) {
 	}
 	_, session, err := h.users.Login(r.Context(), identity.SessionToken(r), username, signals.Password)
 	if errors.Is(err, identity.ErrInvalidCredentials) {
-		patchError(w, r, "Invalid username or password.")
+		patchFieldError(w, r, "password", "Invalid username or password.")
 		return
 	}
 	if errors.Is(err, identity.ErrPasswordBusy) {
@@ -227,7 +227,7 @@ func (h *handlers) reset(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) accountError(w http.ResponseWriter, r *http.Request, operation string, err error) {
 	switch {
 	case errors.Is(err, identity.ErrUsernameTaken):
-		patchError(w, r, "That username is taken. Try another.")
+		patchFieldError(w, r, "username", "That username is taken. Try another.")
 	case errors.Is(err, identity.ErrSetupRequired):
 		patchError(w, r, "Sign-up opens once the admin has set up Poople.")
 	case errors.Is(err, identity.ErrPasswordBusy):
@@ -235,8 +235,12 @@ func (h *handlers) accountError(w http.ResponseWriter, r *http.Request, operatio
 	case errors.Is(err, identity.ErrAlreadySignedUp):
 		patchError(w, r, "This device already has an account. Log in instead.")
 	case errors.Is(err, identity.ErrUsernameInvalid), errors.Is(err, identity.ErrPasswordInvalid):
+		field := "username"
+		if errors.Is(err, identity.ErrPasswordInvalid) {
+			field = "password"
+		}
 		message := err.Error()
-		patchError(w, r, strings.ToUpper(message[:1])+message[1:]+".")
+		patchFieldError(w, r, field, strings.ToUpper(message[:1])+message[1:]+".")
 	default:
 		errorlog.Request(r, operation, err)
 		patchError(w, r, "Something went wrong. Try again.")
@@ -316,9 +320,20 @@ func privateSSE(w http.ResponseWriter, r *http.Request) *datastar.ServerSentEven
 	return datastar.NewSSE(w, r, func(_ *datastar.ServerSentEventGenerator) { privateHeaders(w) })
 }
 
-// patchError clears the password and shows message; account commands render no HTML.
+// patchError shows message for the whole form; account commands render no HTML.
 func patchError(w http.ResponseWriter, r *http.Request, message string) {
-	if err := privateSSE(w, r).MarshalAndPatchSignals(map[string]string{"password": "", "_authError": message}); err != nil {
+	patchFieldError(w, r, "", message)
+}
+
+// patchFieldError shows message against field ("username", "password" or ""
+// for the whole form), which the page marks invalid and focuses. Only an error
+// about the password clears it; everything else keeps what the player typed.
+func patchFieldError(w http.ResponseWriter, r *http.Request, field, message string) {
+	signals := map[string]string{"_authError": message, "_authField": field}
+	if field == "password" {
+		signals["password"] = ""
+	}
+	if err := privateSSE(w, r).MarshalAndPatchSignals(signals); err != nil {
 		errorlog.Request(r, "send account error", err)
 	}
 }

@@ -345,6 +345,13 @@ func TestPlayRevealsParSolutionAndLeaderboardOnlyAfterFinishing(t *testing.T) {
 	if !strings.Contains(html, "Not in word list") || !strings.Contains(html, "rung--rejected") {
 		t.Fatal("rejection not shown")
 	}
+	// A page loaded after the rejection remembers it as seen, so it does not replay.
+	if !strings.Contains(html, `class="toast" style="display: none" data-show="$_toastSeen !== `) || !strings.Contains(html, `data-signals:_toast-seen__ifmissing="&#34;`) {
+		t.Fatal("page load replays a stored rejection")
+	}
+	if strings.Contains(html, `aria-label="Keyboard" inert`) {
+		t.Fatal("unfinished game's keyboard is inert")
+	}
 	f.assertHidden(t, html, 0)
 	for i, word := range f.path[1 : len(f.path)-1] {
 		f.guess(t, session, word)
@@ -369,6 +376,7 @@ func TestPlayRevealsParSolutionAndLeaderboardOnlyAfterFinishing(t *testing.T) {
 			`href="/unlimited"`,
 			"Poople #" + strconv.Itoa(ladder.DailyNumber(time.Now())),
 			"Next puzzle in",
+			`<section class="keyboard" aria-label="Keyboard" inert`,
 		} {
 			if !strings.Contains(html, want) {
 				t.Fatalf("finished view missing %q", want)
