@@ -547,7 +547,7 @@ func TestShareTextIsSpoilerFree(t *testing.T) {
 		t.Fatal("no share component")
 	}
 	element := html[start : start+end]
-	want := "Poople #" + strconv.Itoa(ladder.DailyNumber(time.Now())) + "\n" + strings.ToUpper(f.start) + " → POOP · " + strconv.Itoa(f.par) + " steps (par " + strconv.Itoa(f.par) + ")"
+	want := "Poople #" + strconv.Itoa(ladder.DailyNumber(time.Now())) + " (" + strings.ToUpper(f.start) + "): " + strconv.Itoa(f.par) + "/" + strconv.Itoa(f.par)
 	for _, word := range f.path {
 		want += "\n"
 		for i := range 4 {

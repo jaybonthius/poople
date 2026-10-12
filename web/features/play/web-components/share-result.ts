@@ -30,7 +30,8 @@ rocket('share-result', {
       reset = window.setTimeout(() => { $$.outcome = '' }, 2500)
     }
     action('share', async () => {
-      const text = props.text
+      // The site's own address ends the result, so friends can tap through to play.
+      const text = `${props.text}\n${location.origin}/`
       if (typeof navigator.share === 'function' && navigator.canShare?.({ text }) !== false) {
         try {
           await navigator.share({ text })

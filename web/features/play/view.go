@@ -76,7 +76,7 @@ const yesterdaySheetEffect = "if ($_yesterdayOpen) { if (!el.open) { el.showModa
 // par and one row per rung, brown where the letter is POOP's in that position.
 func (v playView) shareText() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Poople #%d\n%s · %s (par %d)", v.Game.Puzzle.Number, v.result().Route(), core.StepCount(v.Game.Steps), v.Game.Par)
+	fmt.Fprintf(&b, "Poople #%d (%s): %d/%d", v.Game.Puzzle.Number, strings.ToUpper(v.Game.Puzzle.StartWord), v.Game.Steps, v.Game.Par)
 	for _, word := range v.Game.Ladder {
 		b.WriteByte('\n')
 		for i := range len(word) {
