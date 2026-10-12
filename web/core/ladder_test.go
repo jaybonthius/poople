@@ -71,7 +71,7 @@ func TestLadderMarksMatchesFreshRungAndGoal(t *testing.T) {
 		t.Fatal("ladder missing its dashed gap or accessible name")
 	}
 	input := html[strings.Index(html, `id="rung-input-4"`):strings.Index(html, `id="rung-goal"`)]
-	for _, want := range []string{"data-ignore-morph", `data-init="$guess = ''"`, `data-text="$guess[0] ?? &#39;&#39;"`, `data-text="$guess[3] ?? &#39;&#39;"`, "tile--cursor"} {
+	for _, want := range []string{"data-ignore-morph", `data-init="$guess = &#39;&#39;; el.scrollIntoView({block: &#39;nearest&#39;})"`, `data-text="$guess[0] ?? &#39;&#39;"`, `data-text="$guess[3] ?? &#39;&#39;"`, "tile--cursor"} {
 		if !strings.Contains(input, want) {
 			t.Fatalf("input rung missing %q: %s", want, input)
 		}
@@ -83,7 +83,7 @@ func TestLadderMarksMatchesFreshRungAndGoal(t *testing.T) {
 
 func TestLadderWithoutFreshOrInputShowsNoInputRung(t *testing.T) {
 	html := render(t, core.Ladder("FUSE", []string{"FUSS"}, "POOP", core.LadderOptions{}))
-	if strings.Contains(html, "rung--fresh") || strings.Contains(html, "rung--input") || strings.Contains(html, "$guess = ") {
+	if strings.Contains(html, "rung--fresh") || strings.Contains(html, "rung--input") || strings.Contains(html, "$guess = ") || strings.Contains(html, "scrollIntoView") {
 		t.Fatal("ladder drew a fresh or input rung it was not asked for")
 	}
 	if !strings.Contains(html, `id="rung-goal"`) || !strings.Contains(html, "rung--gap") {
@@ -104,16 +104,25 @@ func TestLadderReachedTargetEndsTheLadder(t *testing.T) {
 	if strings.Contains(html, "rung--gap") || strings.Contains(html, "rung-goal") || strings.Contains(html, "rung--input") {
 		t.Fatal("reached ladder still offers input, gap or goal")
 	}
+	// The reached rung clears letters typed after the last guess and scrolls into view.
+	if !strings.Contains(html, `<li id="rung-1" class="rung rung--reached rung--fresh" data-init="$guess = &#39;&#39;; el.scrollIntoView({block: &#39;nearest&#39;})">`) {
+		t.Fatalf("reached rung does not clear the guess or scroll into view: %s", html)
+	}
 }
 
 func TestLadderRejectionReplacesInputRungPerSequence(t *testing.T) {
 	first := render(t, core.Ladder("fuse", []string{"fuss"}, "poop", core.LadderOptions{Input: true, Rejection: 7}))
 	second := render(t, core.Ladder("fuse", []string{"fuss"}, "poop", core.LadderOptions{Input: true, Rejection: 8}))
 	for seq, html := range map[string]string{"7": first, "8": second} {
-		for _, want := range []string{`id="rung-input-2-` + seq + `"`, `class="rung rung--input rung--rejected"`, "data-ignore-morph", `data-init="$_rejectedGuess = $guess"`, `data-class:rung--rejected="$guess === $_rejectedGuess"`} {
+		for _, want := range []string{`id="rung-input-2-` + seq + `" class="rung rung--input"`, "data-ignore-morph", `data-init="$_rejectedGuess = $guess; el.scrollIntoView({block: &#39;nearest&#39;})"`, `data-class:rung--rejected="$guess !== &#39;&#39; &amp;&amp; $guess === $_rejectedGuess"`} {
 			if !strings.Contains(html, want) {
 				t.Fatalf("rejection %s missing %q", seq, want)
 			}
+		}
+		// A page load starts with an empty $guess: the stored rejection must not
+		// turn the empty row tomato or wriggle it, so the class is not drawn.
+		if strings.Contains(html, "rung--input rung--rejected") {
+			t.Fatalf("rejection %s draws the rejected class before the player's own refused word", seq)
 		}
 		if strings.Contains(html, `$guess = ''"`) {
 			t.Fatal("a rejection must keep the refused letters in $guess")
@@ -126,7 +135,7 @@ func TestLadderRejectionReplacesInputRungPerSequence(t *testing.T) {
 }
 
 func TestKeyboardWritesGuessSignalAndPostsFourLetters(t *testing.T) {
-	html := render(t, core.Keyboard("/play/guess"))
+	html := render(t, core.Keyboard("/play/guess", false))
 	letters := regexp.MustCompile(`<button type="button" class="key" data-on:click="\$guess = \(\$guess \+ &#39;([a-z])&#39;\)\.slice\(0, 4\)">([a-z])</button>`).FindAllStringSubmatch(html, -1)
 	var typed strings.Builder
 	for _, key := range letters {
@@ -140,7 +149,7 @@ func TestKeyboardWritesGuessSignalAndPostsFourLetters(t *testing.T) {
 	}
 	for _, want := range []string{
 		`data-signals:guess__ifmissing="''"`,
-		`class="key key--wide key--enter" data-on:click="$guess.length === 4 &amp;&amp; @post(&#34;/play/guess&#34;)"`,
+		`class="key key--wide key--enter" data-attr:aria-busy="$_guessBusy ? 'true' : false" data-on:click="$guess.length === 4 &amp;&amp; @post(&#34;/play/guess&#34;)"`,
 		`aria-label="Delete letter" data-on:click="$guess = $guess.slice(0, -1)"`,
 		`data-on:keydown__window="`,
 	} {
@@ -148,18 +157,50 @@ func TestKeyboardWritesGuessSignalAndPostsFourLetters(t *testing.T) {
 			t.Fatalf("keyboard missing %q", want)
 		}
 	}
-	if !strings.Contains(render(t, core.Keyboard(`/x");alert(1)//`)), `@post(&#34;/x\&#34;);alert(1)//&#34;)`) {
+	if !strings.Contains(render(t, core.Keyboard(`/x");alert(1)//`, false)), `@post(&#34;/x\&#34;);alert(1)//&#34;)`) {
 		t.Fatal("guess URL is not quoted as a JavaScript string")
+	}
+	if strings.Contains(html, " inert") || !strings.Contains(html, `data-on:keydown__window="if (!el.inert &amp;&amp; `) {
+		t.Fatal("an unfinished game's keyboard must type and post")
+	}
+}
+
+func TestFinishedKeyboardIsInert(t *testing.T) {
+	html := render(t, core.Keyboard("/play/guess", true))
+	if !strings.Contains(html, `<section class="keyboard" aria-label="Keyboard" inert`) {
+		t.Fatalf("finished keyboard is not inert: %s", html)
 	}
 }
 
 func TestToastKeepsRegionAndKeysMessage(t *testing.T) {
-	if html := render(t, core.Toast("", 0)); html != `<div class="toast-region" role="status"></div>` {
-		t.Fatalf("empty toast=%q", html)
+	empty := render(t, core.Toast("", "9-0"))
+	if !strings.HasPrefix(empty, `<div class="toast-region" role="status" data-signals:_toast-seen__ifmissing="&#34;&#34;"`) || strings.Contains(empty, `id="toast-`) {
+		t.Fatalf("empty toast=%q", empty)
 	}
-	html := render(t, core.Toast("Not <in> word list", 4))
-	if !strings.Contains(html, `<p id="toast-4" class="toast">Not &lt;in&gt; word list</p>`) {
-		t.Fatalf("toast=%q", html)
+	html := render(t, core.Toast("Not <in> word list", "9-4"))
+	// The page remembers the message it loaded with and keeps it hidden, so a
+	// reload does not replay an old rejection; a newer key shows.
+	for _, want := range []string{
+		`data-signals:_toast-seen__ifmissing="&#34;9-4&#34;"`,
+		`<p id="toast-9-4" class="toast" style="display: none" data-show="$_toastSeen !== &#34;9-4&#34;">Not &lt;in&gt; word list</p>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("toast missing %q: %s", want, html)
+		}
+	}
+}
+
+func TestToastAnnouncesLostConnectionUntilTheStreamPatches(t *testing.T) {
+	html := render(t, core.Toast("", "9-0"))
+	for _, want := range []string{
+		`data-signals:_connection-lost__ifmissing="false"`,
+		`data-show="$_connectionLost" data-text="$_connectionLost ? 'Connection lost. Retrying…' : ''"`,
+		`evt.detail.type === &#39;retrying&#39;`,
+		`evt.detail.type === &#39;datastar-patch-elements&#39;) $_connectionLost = false`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("toast missing %q: %s", want, html)
+		}
 	}
 }
 

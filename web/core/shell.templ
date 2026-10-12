@@ -56,19 +56,25 @@ templ masthead(title string, viewer *Viewer) {
 				@navLink("/admin/users", "Admin", "Admin", "i-admin", title == "Users")
 			}
 			if viewer != nil {
-				<a class="nav-link" href="/account" aria-label={ "Your account, " + viewer.Username } aria-current={ currentPage(title == "Account") }>
-					if viewer.AvatarURL != "" {
-						<img class="avatar" src={ viewer.AvatarURL } alt=""/>
-					} else {
-						<svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg>
-					}
-					<span class="nav-label" aria-hidden="true">{ viewer.Username }</span>
-				</a>
+				@MastheadAccount(title, *viewer)
 			} else {
 				@navLink("/login", "Log in", "Log in", "i-user", title == "Log in" || title == "Sign up")
 			}
 		</nav>
 	</header>
+}
+
+// MastheadAccount is the masthead's link to a signed-in viewer's account, with
+// their picture. Its id lets a live view patch it when the picture changes.
+templ MastheadAccount(title string, viewer Viewer) {
+	<a id="masthead-account" class="nav-link" href="/account" aria-label={ "Your account, " + viewer.Username } aria-current={ currentPage(title == "Account") }>
+		if viewer.AvatarURL != "" {
+			<img class="avatar" src={ viewer.AvatarURL } alt=""/>
+		} else {
+			<svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg>
+		}
+		<span class="nav-label" aria-hidden="true">{ viewer.Username }</span>
+	</a>
 }
 
 templ navLink(href templ.SafeURL, name, label, icon string, current bool) {

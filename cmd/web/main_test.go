@@ -118,11 +118,14 @@ func TestWebBinaryServesAndExitsOnSIGTERM(t *testing.T) {
 	setupLink := ""
 	go func() {
 		scanner := bufio.NewScanner(stderr)
+		addr := ""
 		for scanner.Scan() {
+			if bound, ok := strings.CutPrefix(scanner.Text(), "Listening on "); ok {
+				addr = bound
+			}
+			// The setup link follows the bound address, as an absolute URL.
 			if link, ok := strings.CutPrefix(scanner.Text(), "Admin setup (15 minutes): "); ok {
 				setupLink = link
-			}
-			if addr, ok := strings.CutPrefix(scanner.Text(), "Listening on "); ok {
 				ready <- addr
 				io.Copy(io.Discard, stderr)
 				return
@@ -141,10 +144,10 @@ func TestWebBinaryServesAndExitsOnSIGTERM(t *testing.T) {
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
 	defer client.CloseIdleConnections()
-	if !strings.HasPrefix(setupLink, "/setup?token=") {
-		t.Fatalf("empty database printed no admin setup link: %q", setupLink)
+	if !strings.HasPrefix(setupLink, "http://"+addr+"/setup?token=") {
+		t.Fatalf("empty database printed no absolute admin setup link after the address %q: %q", addr, setupLink)
 	}
-	setup, err := client.Get("http://" + addr + setupLink)
+	setup, err := client.Get(setupLink)
 	if err != nil {
 		t.Fatal(err)
 	}

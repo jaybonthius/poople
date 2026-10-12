@@ -216,7 +216,7 @@ func TestStatsCountDailyGamesAndRevealEveryoneOnlyAfterFinishing(t *testing.T) {
 		"<dt>Current streak</dt><dd>2</dd>",
 		"Everyone today by extra steps", "2 players solved #" + strconv.Itoa(f.number) + ". Your +0 is outlined.",
 		"Based on your 3 solves. Today is outlined.",
-		"You finished on par", "Of the 1 other player who solved #" + strconv.Itoa(f.number) + ", 0 did better, 0 tied with you and 1 used more steps.",
+		"You finished on par", "Of the 1 other player who solved #" + strconv.Itoa(f.number) + ", 1 used more steps.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("statistics after finishing lack %q", want)

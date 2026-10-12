@@ -41,6 +41,8 @@
     min-block-size: 0;
     padding-block: var(--space-2) var(--space-4);
     overflow-y: auto;
+    /* A rung scrolled into view keeps the board's own breathing room. */
+    scroll-padding-block: var(--space-2) var(--space-4);
     overscroll-behavior: contain;
   }
 
@@ -167,7 +169,7 @@
     border: var(--rule) dashed var(--rail-ghost);
     background: var(--tile-empty);
     box-shadow: none;
-    color: var(--wood);
+    color: var(--wood-ink);
   }
 
   .rung--reached {
@@ -247,6 +249,23 @@
 
   .key--enter:hover {
     background: var(--wood-hover);
+  }
+
+  /* A guess in flight: dims after a beat, so fast answers do not flicker. */
+  .key--enter[aria-busy='true'] {
+    cursor: progress;
+    animation: key-busy 1ms linear 300ms forwards;
+  }
+
+  @keyframes key-busy {
+    to {
+      opacity: 0.6;
+    }
+  }
+
+  /* A finished game: the keyboard stays in place but no longer types. */
+  .keyboard[inert] .key {
+    opacity: 0.5;
   }
 
   /* Toast: rejection and confirmation messages, inside a persistent status region */

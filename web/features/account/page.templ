@@ -15,6 +15,13 @@ templ Page(account *identity.Account) {
 	}
 }
 
+// State is what the live stream sends: View plus the masthead's account link,
+// so a new or removed picture shows in the masthead too.
+templ State(account *identity.Account) {
+	@core.MastheadAccount("Account", *mastheadViewer(account))
+	@View(account)
+}
+
 // View renders <main> from the account's stored state. Form feedback lives in
 // local signals that survive the morph.
 templ View(account *identity.Account) {
@@ -42,14 +49,22 @@ templ View(account *identity.Account) {
 						@avatar(account, "")
 						<input
 							type="file"
+							id="avatar-file"
+							class="visually-hidden"
 							name="avatar"
 							accept="image/png,image/jpeg,image/gif,image/webp"
-							aria-label="Choose a picture"
 							aria-describedby="avatar-hint avatar-error"
 							data-indicator:_avatar-busy
 							data-attr:disabled="$_avatarBusy"
 							data-on:change={ uploadAction() }
 						/>
+						<label class="button" for="avatar-file">
+							if account.AvatarHash != "" {
+								Change picture
+							} else {
+								Choose picture
+							}
+						</label>
 					</div>
 					<p class="field-hint" id="avatar-hint" data-text="$_avatarBusy ? 'Uploading…' : 'PNG, JPEG, GIF or WebP up to 2 MB. We crop it to a square.'">PNG, JPEG, GIF or WebP up to 2 MB. We crop it to a square.</p>
 					<p class="field-error" id="avatar-error" role="alert" data-show="$_avatarError" style="display: none">

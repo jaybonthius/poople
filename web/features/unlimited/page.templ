@@ -56,8 +56,8 @@ templ View(v unlimitedView) {
 			<div class="board">
 				@core.Ladder(v.Game.Puzzle.StartWord, v.Game.Ladder[1:], ladder.Target, core.LadderOptions{Input: !v.Game.Finished, Fresh: v.Fresh, Rejection: v.rejectionSeq()})
 			</div>
-			@core.Keyboard("/unlimited/guess")
-			@core.Toast(v.Game.Rejection.Message(), v.rejectionSeq())
+			@core.Keyboard("/unlimited/guess", v.Game.Finished)
+			@core.Toast(v.Game.Rejection.Message(), v.toastKey())
 			if v.Game.Finished {
 				@core.FinishSheet(v.result()) {
 					<div class="share-row">

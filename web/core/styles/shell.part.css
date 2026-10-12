@@ -178,9 +178,10 @@
     color: var(--ink);
   }
 
+  /* The mustard underline marks the selected tab where the fills barely differ (dark). */
   .tabs a[aria-current='page'] {
     background: var(--surface);
-    box-shadow: var(--shadow-raise);
+    box-shadow: inset 0 -3px 0 var(--mustard), var(--shadow-raise);
     color: var(--ink);
   }
 

@@ -47,7 +47,7 @@
   }
 
   .text-link:hover {
-    color: var(--wood);
+    color: var(--wood-ink);
   }
 
   /* Forms */
@@ -140,6 +140,7 @@
 
   .avatar-picker {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-4);
   }
@@ -147,27 +148,22 @@
   .avatar-picker .avatar {
     inline-size: 4rem;
     block-size: 4rem;
+  }
+
+  /* The dashed ring marks an empty picture slot only. */
+  .avatar-picker .avatar--empty {
     border: var(--rule) dashed var(--line-strong);
   }
 
-  .avatar-picker input[type='file'] {
-    min-inline-size: 0;
-    color: var(--ink-muted);
-    font-size: var(--text-sm);
+  /* The file input stays focusable but hidden; its label is the visible button. */
+  .avatar-picker input[type='file']:focus-visible + .button {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
   }
 
-  .avatar-picker input[type='file']::file-selector-button {
-    margin-inline-end: var(--space-3);
-    min-block-size: 2.5rem;
-    padding-inline: var(--space-4);
-    border: 0;
-    border-radius: var(--radius-control);
-    background: var(--key);
-    box-shadow: var(--shadow-key);
-    color: var(--ink);
-    font: inherit;
-    font-weight: 700;
-    cursor: pointer;
+  .avatar-picker input[type='file']:disabled + .button {
+    opacity: 0.6;
+    cursor: progress;
   }
 
   .form-switch {

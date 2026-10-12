@@ -82,7 +82,9 @@ func Page(admin *identity.Account, view templ.Component, statePath string) templ
 }
 
 // View renders <main> from the committed account list, plus a reset link only
-// while the request URL carries it.
+// while the request URL carries it. Once drawn, the link's token is removed
+// from the address bar and history, so it is not shown again after a reload or
+// once the admin leaves the page.
 func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset, notice string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -111,7 +113,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(accountCount(len(accounts)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 25, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 27, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -129,7 +131,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(notice)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 32, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 34, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -148,7 +150,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(issued.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 36, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 38, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -161,13 +163,13 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(issued.Path)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 43, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 45, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" aria-describedby=\"reset-hint\" data-ignore-morph data-init=\"el.value = new URL(el.value, window.location.origin).href\" data-on:click=\"el.select()\"><p class=\"field-hint\" id=\"reset-hint\">Works once, for 24 hours. It can't be shown again after you leave this page.</p></div><a class=\"button\" href=\"/admin/users\">Done</a></section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" aria-describedby=\"reset-hint\" data-ignore-morph data-init=\"el.value = new URL(el.value, window.location.origin).href; history.replaceState(history.state, '', '/admin/users')\" data-on:click=\"el.select()\"><p class=\"field-hint\" id=\"reset-hint\">Works once, for 24 hours. Copy it now: it won't be shown again once you reload or leave this page.</p></div><a class=\"button\" href=\"/admin/users\">Done</a></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -192,7 +194,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(account.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 60, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 62, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -221,7 +223,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(account.CreatedAt.Format("2006-01-02"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 69, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 71, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -234,7 +236,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(account.CreatedAt.Format("2 Jan 2006"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 69, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 71, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -247,7 +249,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(gameCount(account.GamesPlayed))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 69, Col: 157}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 71, Col: 157}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -260,7 +262,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var13 templ.SafeURL
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/users/" + strconv.FormatInt(account.ID, 10) + "/reset"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 73, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 75, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -273,7 +275,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("Issue a password reset link for " + account.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 74, Col: 124}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 76, Col: 124}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 			if templ_7745c5c3_Err != nil {
@@ -289,9 +291,9 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var15 string
-				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("Remove " + account.Username + "'s picture")
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("Remove picture for " + account.Username)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 77, Col: 114}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 79, Col: 111}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 				if templ_7745c5c3_Err != nil {
@@ -304,7 +306,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(commandAction(account.ID, "avatar/remove", ""))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 77, Col: 179}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 79, Col: 176}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 				if templ_7745c5c3_Err != nil {
@@ -323,7 +325,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue("Delete " + account.Username + "'s account")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 80, Col: 129}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 82, Col: 129}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 				if templ_7745c5c3_Err != nil {
@@ -336,7 +338,7 @@ func View(accounts []identity.ListedAccount, adminID int64, issued *IssuedReset,
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(commandAction(account.ID, "delete", "Delete "+account.Username+"'s account? Their games stay, without a name."))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 80, Col: 259}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 82, Col: 259}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 				if templ_7745c5c3_Err != nil {
@@ -389,7 +391,7 @@ func avatar(account identity.Account) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(path)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 91, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `features/admin/page.templ`, Line: 93, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 			if templ_7745c5c3_Err != nil {

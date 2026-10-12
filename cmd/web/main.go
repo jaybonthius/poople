@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -69,13 +70,27 @@ func run(ctx context.Context, args []string, operator io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	if token != "" {
-		if _, err := fmt.Fprintf(operator, "Admin setup (15 minutes): /setup?token=%s\n", token); err != nil {
-			return err
-		}
-	}
 	if _, err := fmt.Fprintf(operator, "Listening on %s\n", listener.Addr()); err != nil {
 		return err
 	}
+	if token != "" {
+		if _, err := fmt.Fprintf(operator, "Admin setup (15 minutes): %s/setup?token=%s\n", localOrigin(listener.Addr()), token); err != nil {
+			return err
+		}
+	}
 	return app.Serve(ctx, backend, listener, handler)
+}
+
+// localOrigin is the bound address as an origin the operator can open on this
+// machine; a wildcard address becomes localhost.
+func localOrigin(addr net.Addr) string {
+	tcp, ok := addr.(*net.TCPAddr)
+	if !ok {
+		return "http://" + addr.String()
+	}
+	host := tcp.IP.String()
+	if tcp.IP == nil || tcp.IP.IsUnspecified() {
+		host = "localhost"
+	}
+	return "http://" + net.JoinHostPort(host, strconv.Itoa(tcp.Port))
 }

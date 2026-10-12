@@ -13,9 +13,10 @@ import (
 	"strconv"
 )
 
-// ErrorPage contains only public status copy and a fixed recovery destination.
-// It renders the anonymous masthead because it runs without a signed-in viewer.
-func ErrorPage(status int) templ.Component {
+// ErrorPage contains only public status copy and a fixed recovery destination,
+// in the centred panel the account forms use. viewer is the signed-in player
+// for the masthead, or nil.
+func ErrorPage(status int, viewer *Viewer) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -48,52 +49,39 @@ func ErrorPage(status int) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main id=\"main\" class=\"page error-page\"><div role=\"alert\"><h1 class=\"page-title\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main id=\"main\" class=\"page error-page\"><div class=\"form-panel\"><div class=\"form-intro\" role=\"alert\"><svg class=\"brand-mark\" aria-hidden=\"true\"><use href=\"#mascot\"></use></svg><h1 class=\"page-title\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(status))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(errorTitle(status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/error.templ`, Line: 14, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/error.templ`, Line: 17, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</h1><p class=\"page-lede\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(http.StatusText(status))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(errorMessage(status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/error.templ`, Line: 14, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/error.templ`, Line: 18, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</h1><p class=\"page-lede\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(errorMessage(status))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/error.templ`, Line: 15, Col: 47}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</p></div><p><a class=\"button button--primary\" href=\"/\">Back to today's puzzle</a></p></main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p></div><a class=\"button button--primary button--block\" href=\"/\">Back to today's puzzle</a></div></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Shell(http.StatusText(status), nil).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Shell(http.StatusText(status), viewer).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -101,12 +89,19 @@ func ErrorPage(status int) templ.Component {
 	})
 }
 
+func errorTitle(status int) string {
+	if status == http.StatusNotFound {
+		return "Page not found"
+	}
+	return strconv.Itoa(status) + " " + http.StatusText(status)
+}
+
 func errorMessage(status int) string {
 	switch status {
 	case http.StatusForbidden:
 		return "You do not have access to this page."
 	case http.StatusNotFound:
-		return "This page is unavailable."
+		return "There's nothing at this address. Check the link, or go back to today's puzzle."
 	default:
 		return "This page could not be loaded. Try again later."
 	}

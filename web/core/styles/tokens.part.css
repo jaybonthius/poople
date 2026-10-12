@@ -104,6 +104,8 @@
     --wood-hover: light-dark(#683b1e, #a96836);
     --on-wood: light-dark(#fff8ee, #fff6ea);
     --wood-soft: light-dark(#f1e3d6, #2e2219);
+    /* Wood as text: the dark wood fill is too dim to read on dark surfaces. */
+    --wood-ink: light-dark(#7a4726, #d49a6a);
     --rail-ghost: light-dark(#b89a83, #6b4e38);
 
     /* Keyboard */

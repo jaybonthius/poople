@@ -2,23 +2,23 @@ package core
 
 import "strconv"
 
-// FinishSheet is the finish sheet: scrim, verdict, route, steps against par
-// and the shortest solution, then children for the page's own sections.
-// Render it only for a finished game, inside a <main> that declares
-// data-signals:_finish-closed__ifmissing="false"; closing hides the sheet
-// until ShowResultButton reopens it.
+// FinishSheet is the finish sheet: a modal dialog with the verdict, route,
+// steps against par and the shortest solution, then children for the page's
+// own sections. Render it only for a finished game, inside a <main> that
+// declares data-signals:_finish-closed__ifmissing="false". It opens as a modal
+// (the page behind is inert) and takes focus; Close, Escape or a click on the
+// backdrop closes it and moves focus to ShowResultButton, which reopens it.
 templ FinishSheet(r FinishResult) {
-	<div class="sheet-scrim" data-preserve-attr="style" data-show="!$_finishClosed" data-on:click="$_finishClosed = true"></div>
 	<dialog
 		id="finish"
 		class="sheet"
-		open
 		tabindex="-1"
 		aria-labelledby="finish-title"
-		data-preserve-attr="style"
-		data-init="$_finishClosed = false; el.focus()"
-		data-show="!$_finishClosed"
-		data-on:keydown__window="evt.key === 'Escape' && ($_finishClosed = true)"
+		data-preserve-attr="open"
+		data-init="$_finishClosed = false"
+		data-effect={ finishSheetEffect }
+		data-on:close={ finishSheetClosed }
+		data-on:click={ finishSheetBackdropClick }
 	>
 		<div class="sheet-header">
 			<div class="result">
@@ -49,5 +49,5 @@ templ FinishSheet(r FinishResult) {
 // ShowResultButton reopens a closed finish sheet; it shows only while the
 // sheet is closed.
 templ ShowResultButton() {
-	<button type="button" class="result-link" style="display: none" data-preserve-attr="style" data-show="$_finishClosed" data-on:click="$_finishClosed = false">Show result</button>
+	<button type="button" id="show-result" class="result-link" style="display: none" data-preserve-attr="style" data-show="$_finishClosed" data-on:click="$_finishClosed = false">Show result</button>
 }

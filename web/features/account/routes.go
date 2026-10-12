@@ -58,7 +58,7 @@ func Routes(ctx context.Context, router chi.Router, users *identity.Service, max
 				if viewer.Account == nil {
 					return nil, nil, identity.ErrInvalidSession
 				}
-				return View(viewer.Account), changed, nil
+				return State(viewer.Account), changed, nil
 			})
 		})
 		router.Post("/account/avatar", h.uploadAvatar)

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"poople/web/core"
+	"poople/web/services/identity"
 )
 
 // identityErrorPage renders the shell error page for browser navigations only.
@@ -16,6 +17,20 @@ func identityErrorPage(w http.ResponseWriter, r *http.Request, status int) bool 
 	}
 	core.WriteErrorPage(w, r, status)
 	return true
+}
+
+// notFound answers unknown paths: the shell error page, with the viewer's
+// masthead, for browser navigations; plain text for everything else.
+func notFound(w http.ResponseWriter, r *http.Request) {
+	if !navigationNotFound(r) {
+		http.NotFound(w, r)
+		return
+	}
+	var viewer *core.Viewer
+	if v := identity.ViewerFrom(r.Context()); v != nil && v.Account != nil {
+		viewer = &core.Viewer{Username: v.Account.Username, AvatarURL: v.Account.AvatarPath(), IsAdmin: v.Account.IsAdmin}
+	}
+	core.WriteErrorPage(w, r.WithContext(core.WithViewer(r.Context(), viewer)), http.StatusNotFound)
 }
 
 // navigationNotFound reports whether a missing path was a browser page

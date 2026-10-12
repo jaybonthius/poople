@@ -178,6 +178,11 @@ func TestResetLinkIsShownOnceAndWorks(t *testing.T) {
 	if page.Code != 200 || !strings.Contains(page.Body.String(), `value="`+strings.ReplaceAll(link, "&", "&amp;")+`"`) || !strings.Contains(page.Body.String(), "Reset link for mira") {
 		t.Fatalf("issued page: %d", page.Code)
 	}
+	// Once drawn, the token leaves the address bar and history, so Back or a
+	// reload cannot show it again, as the hint says.
+	if !strings.Contains(page.Body.String(), "history.replaceState(history.state, '', '/admin/users')") || !strings.Contains(page.Body.String(), "it won't be shown again once you reload or leave this page") {
+		t.Fatal("issued page leaves the reset token in the address bar")
+	}
 	if body := f.page("/admin/users", f.admin).Body.String(); strings.Contains(body, token) || strings.Contains(body, `id="reset-url"`) {
 		t.Fatal("reset token shown without its URL")
 	}
@@ -219,8 +224,8 @@ func TestAdminRemovesPicture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(f.page("/admin/users", f.admin).Body.String(), hash) {
-		t.Fatal("list does not show mira's picture")
+	if list := f.page("/admin/users", f.admin).Body.String(); !strings.Contains(list, hash) || !strings.Contains(list, `aria-label="Remove picture for mira"`) {
+		t.Fatal("list does not show mira's picture with a removal button named for its visible label")
 	}
 	if w := f.postJSON(accountPath(mira, "avatar/remove"), f.admin, nil); w.Code != http.StatusNoContent {
 		t.Fatalf("remove: %d %s", w.Code, w.Body)

@@ -178,7 +178,7 @@ A board-game print palette: one committed shell colour, one wood accent, three s
 
 ### Primary
 - **Board Green** (`board`): the masthead band and the dark theme's header. Owns the top of every screen; nothing else uses it as a fill.
-- **Ladder Wood** (`wood`): matching tiles, the ladder rails and crossbars, Enter, the primary button and the "You" distribution series. `wood-edge` is its bevel and border; `on-wood` its text.
+- **Ladder Wood** (`wood`): matching tiles, the ladder rails and crossbars, Enter, the primary button and the "You" distribution series. `wood-edge` is its bevel and border; `on-wood` its text. Wood used as text (the On-par chip, the Perfect! stamp, link hovers) is `wood-ink`, which lightens in dark so it keeps 4.5:1.
 
 ### Secondary
 - **Tomato** (`tomato`): rejection only. Rejected input tiles (`tomato-soft` fill, tomato border) and field errors.

@@ -5,18 +5,29 @@ import (
 	"strconv"
 )
 
-// ErrorPage contains only public status copy and a fixed recovery destination.
-// It renders the anonymous masthead because it runs without a signed-in viewer.
-templ ErrorPage(status int) {
-	@Shell(http.StatusText(status), nil) {
+// ErrorPage contains only public status copy and a fixed recovery destination,
+// in the centred panel the account forms use. viewer is the signed-in player
+// for the masthead, or nil.
+templ ErrorPage(status int, viewer *Viewer) {
+	@Shell(http.StatusText(status), viewer) {
 		<main id="main" class="page error-page">
-			<div role="alert">
-				<h1 class="page-title">{ strconv.Itoa(status) } { http.StatusText(status) }</h1>
-				<p class="page-lede">{ errorMessage(status) }</p>
+			<div class="form-panel">
+				<div class="form-intro" role="alert">
+					<svg class="brand-mark" aria-hidden="true"><use href="#mascot"></use></svg>
+					<h1 class="page-title">{ errorTitle(status) }</h1>
+					<p class="page-lede">{ errorMessage(status) }</p>
+				</div>
+				<a class="button button--primary button--block" href="/">Back to today's puzzle</a>
 			</div>
-			<p><a class="button button--primary" href="/">Back to today's puzzle</a></p>
 		</main>
 	}
+}
+
+func errorTitle(status int) string {
+	if status == http.StatusNotFound {
+		return "Page not found"
+	}
+	return strconv.Itoa(status) + " " + http.StatusText(status)
 }
 
 func errorMessage(status int) string {
@@ -24,7 +35,7 @@ func errorMessage(status int) string {
 	case http.StatusForbidden:
 		return "You do not have access to this page."
 	case http.StatusNotFound:
-		return "This page is unavailable."
+		return "There's nothing at this address. Check the link, or go back to today's puzzle."
 	default:
 		return "This page could not be loaded. Try again later."
 	}
