@@ -7,7 +7,7 @@ A private, server-rendered fork of [Poople](https://pooplegame.com/), the daily 
 Requires Go 1.26 and [Task](https://taskfile.dev).
 
 ```sh
-task worktree:setup          # install pinned tools into .tools/bin
+task setup:dev               # once: install pinned code generators into .tools/bin
 task build                   # generate code and build bin/poople
 bin/poople --data-dir ./data # serves on 127.0.0.1:8080
 ```
