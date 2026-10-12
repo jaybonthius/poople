@@ -1,0 +1,11 @@
+package core
+
+// Avatar is a player's round picture, or the generic player icon when url is
+// empty: anonymous players and accounts without a picture.
+templ Avatar(url string) {
+	if url != "" {
+		<img class="avatar" src={ url } alt=""/>
+	} else {
+		<span class="avatar avatar--blank" aria-hidden="true"><svg class="icon"><use href="#i-user"></use></svg></span>
+	}
+}

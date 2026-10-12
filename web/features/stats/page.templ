@@ -1,0 +1,93 @@
+package stats
+
+import (
+	"poople/lib/static"
+	"poople/web/core"
+	"strconv"
+)
+
+// Page is the first load; its stream replaces <main> with View after every
+// change to the viewer's games or today's puzzle.
+templ Page(viewer *core.Viewer, v statsView) {
+	@core.Shell("Statistics", viewer, static.Path("stats", "styles/stats.css")) {
+		<div data-init="@get('/stats/state', {retry: 'always', retryMaxCount: Infinity})"></div>
+		@View(v)
+	}
+}
+
+// View renders <main> from SQLite state, for both the first load and the
+// stream. Everyone's results today appear only once the viewer has finished
+// today's puzzle; with today's standings they would reveal par.
+templ View(v statsView) {
+	<main id="main" class="page stats">
+		<div class="page-heading">
+			<h1 class="page-title">Statistics</h1>
+			if v.Stats.Played == 0 {
+				<p class="page-lede">Your daily puzzles count here once you play. Unlimited games don’t count.</p>
+			} else {
+				<p class="page-lede">Daily puzzles only. Unlimited games don’t count.</p>
+			}
+		</div>
+		<dl class="stats-figures">
+			<div class="stats-figure"><dt>Played</dt><dd>{ strconv.Itoa(v.Stats.Played) }</dd></div>
+			<div class="stats-figure"><dt>Wins</dt><dd>{ strconv.Itoa(v.Stats.Wins) }</dd></div>
+			<div class="stats-figure">
+				<dt>Avg extra steps</dt>
+				<dd>
+					{ v.average() }
+					if v.Stats.Wins == 0 {
+						<span class="visually-hidden">none yet</span>
+					}
+				</dd>
+			</div>
+			<div class="stats-figure"><dt>Current streak</dt><dd>{ strconv.Itoa(v.Stats.CurrentStreak) }</dd></div>
+			<div class="stats-figure"><dt>Best streak</dt><dd>{ strconv.Itoa(v.Stats.BestStreak) }</dd></div>
+		</dl>
+		<section class="sheet-section distribution" aria-labelledby="dist-title">
+			<h2 class="sheet-section-title" id="dist-title">Extra steps over par</h2>
+			<fieldset class="segmented">
+				<legend class="visually-hidden">Show distribution for</legend>
+				<label><input type="radio" name="dist" value="you" checked/>You</label>
+				<label><input type="radio" name="dist" value="everyone"/>Everyone { v.number() }</label>
+			</fieldset>
+			<div class="dist-panel dist-panel--you">
+				if v.Stats.Wins == 0 {
+					<p class="dist-empty">No solves yet. <a class="text-link" href="/">Play today’s puzzle</a></p>
+				} else {
+					@distribution(v.rows(v.Stats.Distribution), "Your solves by extra steps")
+					<p class="footnote">{ v.youFootnote() }</p>
+				}
+			</div>
+			<div class="dist-panel dist-panel--everyone">
+				if v.Stats.Today == nil {
+					<p class="dist-empty">Finish today’s puzzle to see how everyone did. <a class="text-link" href="/">Play { v.number() }</a></p>
+				} else {
+					@distribution(v.rows(v.Stats.Everyone), "Everyone today by extra steps")
+					<p class="footnote">{ v.everyoneFootnote() }</p>
+				}
+			</div>
+		</section>
+		if v.Stats.Today != nil {
+			<section class="sheet-section" aria-labelledby="compare-title">
+				<h2 class="sheet-section-title" id="compare-title">{ v.todayHeading() }</h2>
+				<p class="footnote">{ v.comparison() }</p>
+			</section>
+		}
+	</main>
+}
+
+templ distribution(rows []distRow, label string) {
+	<ol class="dist-list" aria-label={ label }>
+		for _, row := range rows {
+			<li class={ "dist-row", templ.KV("dist-row--today", row.Today) }>
+				<span class="dist-label">{ row.Label }<span class="visually-hidden"> extra steps</span></span>
+				<span class={ "dist-bar", templ.KV("dist-bar--filled", row.Count > 0) } style={ shareStyle(row.Share) }>
+					{ strconv.Itoa(row.Count) }
+					if row.Today {
+						<span class="visually-hidden"> (today)</span>
+					}
+				</span>
+			</li>
+		}
+	</ol>
+}

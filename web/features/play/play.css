@@ -1,4 +1,4 @@
-/* Play page: the share row and blank avatars. */
+/* Play page: the share row. */
 
 @layer feature {
   /* share-result renders its button in light DOM, so the host takes the button's place in .share-row.
@@ -19,16 +19,5 @@
     flex-grow: 1;
     padding-inline: var(--space-4);
     white-space: nowrap;
-  }
-
-  .avatar--blank {
-    display: grid;
-    place-items: center;
-    color: var(--ink-muted);
-  }
-
-  .avatar--blank .icon {
-    inline-size: 1.125rem;
-    block-size: 1.125rem;
   }
 }

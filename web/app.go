@@ -13,7 +13,9 @@ import (
 	"poople/web/features/account"
 	"poople/web/features/admin"
 	"poople/web/features/auth"
+	"poople/web/features/leaderboard"
 	"poople/web/features/play"
+	"poople/web/features/stats"
 	"poople/web/features/unlimited"
 	"poople/web/services/game"
 	"poople/web/services/identity"
@@ -80,5 +82,7 @@ func NewApp(ctx context.Context, backend *app.Backend, secureCookies bool, maxFP
 	admin.Routes(ctx, router, users, backend.Players().Changes, maxFPS, identityErrorPage)
 	play.Routes(ctx, router, users, games, maxFPS)
 	unlimited.Routes(ctx, router, users, games, maxFPS)
+	leaderboard.Routes(ctx, router, users, games, maxFPS)
+	stats.Routes(ctx, router, users, games, maxFPS)
 	return router, token, nil
 }

@@ -346,64 +346,6 @@ func (s *Service) GameView(ctx context.Context, playerID, puzzleID int64) (Game,
 	return view, err
 }
 
-// Standing is one finished game on a puzzle's leaderboard.
-type Standing struct {
-	Rank       int // 1 for the best game listed
-	PlayerID   int64
-	AccountID  int64  // 0 for the viewer's own anonymous game
-	Username   string // "" for the viewer's own anonymous game
-	AvatarHash string // "" without a picture
-	Steps      int
-	SolveTime  time.Duration
-	You        bool // the viewer's own game
-}
-
-// Standings is a puzzle's leaderboard as one viewer sees it.
-type Standings struct {
-	// Rows are the finished games of players with accounts, ranked by steps,
-	// then solve time, then who finished first. An anonymous viewer who has
-	// finished is ranked among them too, without a name.
-	Rows []Standing
-	// Anonymous counts the other anonymous players who finished; they are not listed.
-	Anonymous int
-}
-
-// Standings reads the finished games on the puzzle for viewerPlayerID, which
-// is 0 for a visitor who has not played. Rows reveal other players' steps, so
-// show them to a player only once they have finished the puzzle.
-func (s *Service) Standings(ctx context.Context, puzzleID, viewerPlayerID int64) (Standings, error) {
-	var standings Standings
-	err := s.db.Read(ctx, func(conn *sqlite.Conn) error {
-		rows, err := zz.OncePuzzleStandings(conn, puzzleID)
-		if err != nil {
-			return err
-		}
-		for _, row := range rows {
-			you := viewerPlayerID != 0 && row.PlayerId == viewerPlayerID
-			if row.AccountId == nil && !you {
-				standings.Anonymous++
-				continue
-			}
-			standing := Standing{
-				Rank: len(standings.Rows) + 1, PlayerID: row.PlayerId, Steps: int(row.Steps),
-				SolveTime: time.Duration(row.SolveTime) * time.Millisecond, You: you,
-			}
-			if row.AccountId != nil {
-				standing.AccountID = *row.AccountId
-			}
-			if row.Username != nil {
-				standing.Username = *row.Username
-			}
-			if row.AvatarHash != nil {
-				standing.AvatarHash = *row.AvatarHash
-			}
-			standings.Rows = append(standings.Rows, standing)
-		}
-		return nil
-	})
-	return standings, err
-}
-
 // MergePlayers moves from's games to the player to, except puzzles to already
 // has, whose duplicates are deleted. Run it in the login Write, then notify
 // the to player's topic after commit.

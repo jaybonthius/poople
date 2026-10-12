@@ -69,17 +69,9 @@ func (v playView) shareText() string {
 	return b.String()
 }
 
-func (v playView) othersFootnote() string {
-	n := v.Standings.Anonymous
-	players := "players"
-	if n == 1 {
-		players = "player"
-	}
-	also := ""
-	if len(v.Standings.Rows) > 0 {
-		also = " also"
-	}
-	return fmt.Sprintf("%d anonymous %s%s solved #%d.", n, players, also, v.Game.Puzzle.Number)
+// unlistedFootnote names how many finishers the standings leave out.
+func (v playView) unlistedFootnote() string {
+	return fmt.Sprintf("%d players solved #%d; the top %d are listed.", v.Standings.Finishers, v.Game.Puzzle.Number, game.StandingsShown)
 }
 
 // clock formats a duration as m:ss, or h:mm:ss from an hour.
@@ -115,6 +107,7 @@ const (
 	countdownISO     = "(s => 'PT' + Math.floor(s / 3600) + 'H' + (Math.floor(s / 60) % 60) + 'M' + (s % 60) + 'S')(" + countdownSeconds + ")"
 )
 
+// avatarURL is the row's picture, "" for anonymous players and accounts without one.
 func avatarURL(row game.Standing) string {
 	return (&identity.Account{ID: row.AccountID, AvatarHash: row.AvatarHash}).AvatarPath()
 }

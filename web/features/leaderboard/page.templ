@@ -1,0 +1,139 @@
+package leaderboard
+
+import (
+	"poople/lib/static"
+	"poople/web/core"
+	"poople/web/services/game"
+	"strconv"
+)
+
+// Page is the first load of a tab; its stream replaces <main> with View after
+// every change.
+templ Page(viewer *core.Viewer, v boardView) {
+	@core.Shell("Leaderboard", viewer, static.Path("leaderboard", "styles/leaderboard.css")) {
+		<div data-init={ v.streamExpr() }></div>
+		@View(v)
+	}
+}
+
+// View renders <main> from SQLite state, for both the first load and the
+// stream. It shows steps and times but never words, and par only to a viewer
+// who has finished today's puzzle.
+templ View(v boardView) {
+	<main id="main" class="page leaderboard">
+		<h1 class="page-title">Leaderboard</h1>
+		<nav class="tabs" aria-label="Leaderboard period">
+			<a href={ templ.SafeURL(today.path()) } aria-current={ current(v.Tab == today) }>Today</a>
+			<a href={ templ.SafeURL(allTime.path()) } aria-current={ current(v.Tab == allTime) }>All-time</a>
+		</nav>
+		if v.Tab == today {
+			@todayBoard(v)
+		} else {
+			@allTimeBoard(v)
+		}
+	</main>
+}
+
+templ todayBoard(v boardView) {
+	if len(v.Standings.Rows) == 0 {
+		<div class="board-empty">
+			<p>No one has solved { v.title() } yet.</p>
+			if !v.Finished {
+				<a class="button button--primary" href="/">Play today’s puzzle</a>
+			}
+		</div>
+	} else {
+		<table class="board-table">
+			<caption>{ v.todayCaption() }</caption>
+			<thead>
+				<tr>
+					<th scope="col"><span class="visually-hidden">Rank</span><span aria-hidden="true">#</span></th>
+					<th scope="col">Player</th>
+					<th scope="col" class="num">Steps</th>
+					<th scope="col" class="num">Time</th>
+				</tr>
+			</thead>
+			<tbody>
+				for i, row := range v.Standings.Rows {
+					<tr class={ templ.KV("row--you", row.You), templ.KV("row--apart", v.Standings.ViewerAfterGap && i == len(v.Standings.Rows)-1) }>
+						<td>@rank(row.Rank)</td>
+						<td>@player(avatarURL(row.AccountID, row.AvatarHash), row.Username, row.You)</td>
+						<td class="num">
+							{ strconv.Itoa(row.Steps) }
+							if v.Finished {
+								<span class="steps-delta">{ v.parDelta(row) }</span>
+							}
+						</td>
+						<td class="num">{ clock(row.SolveTime) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		if v.Standings.Unlisted() > 0 {
+			<p class="footnote">{ v.unlistedFootnote() }</p>
+		}
+		if !v.Finished {
+			<p class="footnote">Par appears once you finish. <a class="text-link" href="/">Play today’s puzzle</a></p>
+		}
+	}
+	if !v.SignedIn {
+		<p class="footnote"><a class="text-link" href="/signup">Create an account</a> to appear on the leaderboard by name.</p>
+	}
+}
+
+templ allTimeBoard(v boardView) {
+	if len(v.AllTime.Rows) == 0 {
+		<div class="board-empty">
+			<p>No one has finished { strconv.Itoa(game.AllTimeMinGames) } daily puzzles yet.</p>
+		</div>
+	} else {
+		<table class="board-table">
+			<caption>{ v.allTimeCaption() }</caption>
+			<thead>
+				<tr>
+					<th scope="col"><span class="visually-hidden">Rank</span><span aria-hidden="true">#</span></th>
+					<th scope="col">Player</th>
+					<th scope="col" class="num"><abbr title="Current streak">Streak</abbr></th>
+					<th scope="col" class="num"><abbr title="Best streak">Best</abbr></th>
+					<th scope="col" class="num">Avg over par</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, row := range v.AllTime.Rows {
+					<tr class={ templ.KV("row--you", row.You) }>
+						<td>@rank(row.Rank)</td>
+						<td>@player(avatarURL(row.AccountID, row.AvatarHash), row.Username, row.You)</td>
+						<td class="num">{ strconv.Itoa(row.CurrentStreak) }</td>
+						<td class="num">{ strconv.Itoa(row.BestStreak) }</td>
+						<td class="num">{ average(row) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+	if !v.SignedIn {
+		<p class="footnote"><a class="text-link" href="/signup">Create an account</a> to appear on the all-time board.</p>
+	} else if !v.listed() {
+		<p class="footnote">{ v.gamesNeeded() }</p>
+	}
+}
+
+templ rank(n int) {
+	<span class={ "rank", templ.KV("rank--first", n == 1) }>{ strconv.Itoa(n) }</span>
+}
+
+templ player(avatarURL, username string, you bool) {
+	<span class="player">
+		@core.Avatar(avatarURL)
+		<span class="player-name">
+			if username != "" {
+				{ username }
+			} else {
+				Anonymous
+			}
+		</span>
+		if you {
+			<span class="you-tag">You</span>
+		}
+	</span>
+}

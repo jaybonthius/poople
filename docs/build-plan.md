@@ -66,7 +66,7 @@ The browser receives only the current puzzle's start word and the player's own l
 ## Screens
 
 - **Play (`/`):** puzzle number and start word, ladder rows of four tiles (a tile is highlighted when its letter matches POOP in that position, as in Poople), current input row, on-screen keyboard, toast for rejections. Finish sheet: "Perfect!" or "Solved", start → POOP, steps against par, one shortest solution, share, countdown to 08:00 UTC, today's leaderboard (live).
-- **Leaderboard (`/leaderboard`):** Today (steps, then solve time) and All-time (current streak, best streak, average steps over par with at least 5 games). Anonymous players count in the everyone distribution and see their own rank but are not listed by name.
+- **Leaderboard (`/leaderboard`):** Today (steps, then solve time) and All-time (current streak, best streak, average steps over par with at least 5 games). Today ranks every finisher (steps, then solve time, dense ranks); accounts show name and avatar, others show as Anonymous; top 20 plus the viewer's row. Spoiler rules: before the viewer finishes today, par marks, the Everyone distribution and today's contribution to all-time averages stay hidden; words are never shown.
 - **Stats:** wins, average extra steps, current and best streak, extra-steps distribution for you and for everyone today.
 - **Unlimited (`/unlimited`):** same play surface, new random puzzle on request, no leaderboard.
 - **Account:** sign up, log in, log out, profile picture, password change. **Admin (`/admin/users`):** list, reset link, remove picture or account.

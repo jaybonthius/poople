@@ -91,13 +91,3 @@ WHERE games.player_id = @from_player
 
 -- name: DeletePlayerGames :exec
 DELETE FROM games WHERE player_id = @player_id;
-
--- name: PuzzleStandings :many
--- Finished games on the puzzle, best first: fewest steps, then fastest solve,
--- then earliest finish. account_id is NULL for anonymous players.
-SELECT g.player_id, a.id AS account_id, a.username, a.avatar_hash,
-    (SELECT count(*) FROM guesses s WHERE s.game_id = g.id) AS steps,
-    g.finished_at - g.started_at AS solve_time
-FROM games g LEFT JOIN accounts a ON a.player_id = g.player_id
-WHERE g.puzzle_id = @puzzle_id AND g.finished_at IS NOT NULL
-ORDER BY steps, solve_time, g.finished_at, g.player_id;

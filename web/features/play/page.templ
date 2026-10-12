@@ -62,13 +62,13 @@ templ finishSheet(v playView) {
 			</div>
 			if len(v.Standings.Rows) > 0 {
 				<ol class="standings">
-					for _, row := range v.Standings.Rows {
-						@standing(row)
+					for i, row := range v.Standings.Rows {
+						@standing(row, v.Standings.ViewerAfterGap && i == len(v.Standings.Rows)-1)
 					}
 				</ol>
 			}
-			if v.Standings.Anonymous > 0 {
-				<p class="footnote">{ v.othersFootnote() }</p>
+			if v.Standings.Unlisted() > 0 {
+				<p class="footnote">{ v.unlistedFootnote() }</p>
 			}
 			if !v.SignedIn {
 				<p class="footnote"><a class="text-link" href="/signup">Create an account</a> to appear on the leaderboard by name.</p>
@@ -87,14 +87,12 @@ templ nextPuzzle(v playView) {
 	</p>
 }
 
-templ standing(row game.Standing) {
-	<li class={ "standing", templ.KV("standing--you", row.You) }>
+// standing is one row of today's leaderboard; apart marks the viewer's row
+// when other finishers rank between it and the rows above.
+templ standing(row game.Standing, apart bool) {
+	<li class={ "standing", templ.KV("standing--you", row.You), templ.KV("standing--apart", apart) }>
 		<span class={ "rank", templ.KV("rank--first", row.Rank == 1) }>{ strconv.Itoa(row.Rank) }</span>
-		if url := avatarURL(row); url != "" {
-			<img class="avatar" src={ url } alt=""/>
-		} else {
-			<span class="avatar avatar--blank" aria-hidden="true"><svg class="icon"><use href="#i-user"></use></svg></span>
-		}
+		@core.Avatar(avatarURL(row))
 		<span class="standing-name">
 			if row.Username != "" {
 				{ row.Username }

@@ -20,6 +20,20 @@
     background: var(--mustard-soft);
   }
 
+  /* The viewer's row below the listed rows, with other finishers between */
+  .standing--apart {
+    position: relative;
+    margin-block-start: var(--space-4);
+  }
+
+  .standing--apart::before {
+    content: '';
+    position: absolute;
+    inset-inline: var(--space-2);
+    inset-block-start: calc(var(--space-3) * -1);
+    border-block-start: 2px dotted var(--line-strong);
+  }
+
   .standing-name {
     overflow: hidden;
     font-weight: 600;
@@ -61,6 +75,18 @@
     border-radius: var(--radius-pill);
     background: var(--surface-sunken);
     object-fit: cover;
+  }
+
+  /* Anonymous players and accounts without a picture */
+  .avatar--blank {
+    display: grid;
+    place-items: center;
+    color: var(--ink-muted);
+  }
+
+  .avatar--blank .icon {
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
   }
 
   .you-tag {

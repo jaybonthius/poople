@@ -424,9 +424,12 @@ func TestAGuessUpdatesAnotherViewersLeaderboard(t *testing.T) {
 	if !strings.Contains(frame, `<li class="standing standing--you">`) || !strings.Contains(frame, "Admin") || strings.Contains(frame, "Create an account") {
 		t.Fatal("admin's leaderboard lacks their own row")
 	}
-	// An anonymous player finishing shows up as a count, not by name.
+	// An anonymous player finishing is ranked too, without a name.
+	if strings.Contains(frame, "Anonymous") {
+		t.Fatal("admin's leaderboard lists an anonymous player before one finished")
+	}
 	f.finish(t, "")
-	for !strings.Contains(frame, "1 anonymous player also solved") {
+	for !strings.Contains(frame, "Anonymous") {
 		frame = watching.next(t)
 	}
 	bob := f.account(t, "/signup", "bob", map[string]string{})
