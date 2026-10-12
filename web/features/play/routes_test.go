@@ -443,7 +443,7 @@ func TestPlayRevealsParAndLeaderboardOnlyAfterFinishing(t *testing.T) {
 // own ladder. The best route appears the next day as Yesterday's answer.
 func TestFinishedDailyHidesTheShortestLadderUntilTomorrow(t *testing.T) {
 	clock := &runningClock{}
-	clock.Set(time.Date(2026, time.October, 11, 9, 0, 0, 0, time.UTC)) // #423, FUSE
+	clock.Set(time.Date(2026, time.October, 12, 9, 0, 0, 0, time.UTC)) // #2, LONG
 	f := newFixtureAt(t, clock.Now)
 	server := f.server(t)
 	route := f.longerRoute(t)
@@ -475,13 +475,13 @@ func TestFinishedDailyHidesTheShortestLadderUntilTomorrow(t *testing.T) {
 				t.Fatalf("finished daily view missing %q", want)
 			}
 		}
-		f.assertYesterday(t, html, 422)
+		f.assertYesterday(t, html, 1)
 	}
-	clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
+	clock.Set(time.Date(2026, time.October, 13, 8, 0, 0, 0, time.UTC))
 	html := f.page(t, session)
-	f.assertYesterday(t, html, 423)
-	if !strings.Contains(html, "Daily #424<") {
-		t.Fatal("the next day's page is not #424")
+	f.assertYesterday(t, html, 2)
+	if !strings.Contains(html, "Daily #3<") {
+		t.Fatal("the next day's page is not #3")
 	}
 }
 
@@ -506,9 +506,11 @@ func (f *fixture) longerRoute(t *testing.T) []string {
 
 // Yesterday's answer opens from the heading before the player has guessed.
 func TestYesterdaysAnswerIsOnThePageBeforePlaying(t *testing.T) {
-	f := newFixture(t)
+	clock := &runningClock{}
+	clock.Set(time.Date(2026, time.October, 12, 9, 0, 0, 0, time.UTC)) // #2
+	f := newFixtureAt(t, clock.Now)
 	server := f.server(t)
-	number := ladder.DailyNumber(time.Now())
+	const number = 2
 	for _, html := range []string{f.page(t, ""), f.stream(t, server, "", nil).next(t)} {
 		if !strings.Contains(html, `<button type="button" id="yesterday-link" class="result-link" aria-haspopup="dialog" data-on:click="$_yesterdayOpen = true">Yesterday’s answer</button>`) {
 			t.Fatal("heading lacks Yesterday's answer")
@@ -521,12 +523,17 @@ func TestYesterdaysAnswerIsOnThePageBeforePlaying(t *testing.T) {
 	}
 }
 
-// Puzzle #0 has no yesterday.
+// Puzzle #1 has no yesterday, including before launch, when #1 is already open.
 func TestNoYesterdaysAnswerOnTheFirstPuzzle(t *testing.T) {
-	f := newFixtureAt(t, func() time.Time { return time.Date(2025, time.August, 14, 9, 0, 0, 0, time.UTC) })
-	html := f.page(t, "")
-	if !strings.Contains(html, "Daily #0<") || strings.Contains(html, "Yesterday’s answer") || strings.Contains(html, `id="yesterday"`) {
-		t.Fatal("puzzle #0 offers a Yesterday's answer")
+	for _, at := range []time.Time{
+		time.Date(2026, time.October, 11, 9, 0, 0, 0, time.UTC),
+		time.Date(2026, time.October, 10, 9, 0, 0, 0, time.UTC),
+	} {
+		f := newFixtureAt(t, func() time.Time { return at })
+		html := f.page(t, "")
+		if !strings.Contains(html, "Daily #1<") || !strings.Contains(html, "PAVE, start word") || strings.Contains(html, "Yesterday’s answer") || strings.Contains(html, `id="yesterday"`) {
+			t.Fatalf("puzzle #1 at %v is not PAVE or offers a Yesterday's answer", at)
+		}
 	}
 }
 

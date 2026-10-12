@@ -22,8 +22,17 @@ const Target = "poop"
 // Calendar and unlimited start words closer than this are skipped.
 const MinStartDistance = 4
 
-// dailyEpoch is when puzzle 0 started; a new daily puzzle starts every 24 hours.
-var dailyEpoch = time.Date(2025, time.August, 14, 8, 0, 0, 0, time.UTC)
+// dailyEpoch is when daily puzzle #1 opens; a new daily puzzle opens every 24
+// hours.
+var dailyEpoch = time.Date(2026, time.October, 11, 8, 0, 0, 0, time.UTC)
+
+// calendarSeed fixes the calendar shuffle.
+const calendarSeed = 0x706f6f706c65 // "poople"
+
+// calendarOrderVersion names the calendar ordering rule. The order is derived
+// from the files, so it is part of the checksum: bump it whenever orderCalendar
+// changes so existing databases store the new order as a new list version.
+const calendarOrderVersion = "calendar-order-1"
 
 //go:embed data/csw24-four-letter.txt data/poople-calendar.txt data/poople-common.txt
 var dataFiles embed.FS
@@ -34,7 +43,7 @@ type Data struct {
 	accepted  map[string]bool
 	distance  map[string]int // BFS distance to Target; reachable words only
 	common    map[string]bool
-	calendar  []string // Poople calendar order, distance >= MinStartDistance
+	calendar  []string // daily start words in puzzle order; see orderCalendar
 	unlimited []string // common accepted words with distance >= MinStartDistance, sorted
 	checksum  string
 }
@@ -54,7 +63,8 @@ func Load() (*Data, error) {
 
 // Parse builds Data from the accepted-word list, the Poople calendar and the
 // Poople frequency list. Each file holds one lowercase four-letter word per
-// line with no duplicates. The accepted list must contain Target.
+// line with no duplicates. The accepted list must contain Target. The calendar
+// file supplies the set of start words, not their order; see orderCalendar.
 func Parse(accepted, calendar, common []byte) (*Data, error) {
 	acceptedWords, err := parseWords("accepted", accepted)
 	if err != nil {
@@ -73,7 +83,7 @@ func Parse(accepted, calendar, common []byte) (*Data, error) {
 		words:    slices.Sorted(slices.Values(acceptedWords)),
 		accepted: make(map[string]bool, len(acceptedWords)),
 		common:   make(map[string]bool),
-		checksum: checksum(accepted, calendar, common),
+		checksum: checksum([]byte(calendarOrderVersion), accepted, calendar, common),
 	}
 	for _, w := range acceptedWords {
 		d.accepted[w] = true
@@ -88,13 +98,17 @@ func Parse(accepted, calendar, common []byte) (*Data, error) {
 	}
 	d.distance = d.distances()
 
+	var starts []string
 	for _, w := range calendarWords {
 		if dist, ok := d.distance[w]; ok && dist >= MinStartDistance {
-			d.calendar = append(d.calendar, w)
+			starts = append(starts, w)
 		}
 	}
-	if len(d.calendar) == 0 {
+	if len(starts) == 0 {
 		return nil, fmt.Errorf("calendar has no word with distance >= %d", MinStartDistance)
+	}
+	if d.calendar, err = d.orderCalendar(starts); err != nil {
+		return nil, err
 	}
 	for _, w := range d.words {
 		if dist, ok := d.distance[w]; ok && d.common[w] && dist >= MinStartDistance {
@@ -136,8 +150,9 @@ func wellFormed(w string) bool {
 	return true
 }
 
-// checksum is the hex SHA-256 of each file's length (8-byte big-endian)
-// followed by its bytes, in accepted, calendar, common order.
+// checksum is the hex SHA-256 of each part's length (8-byte big-endian)
+// followed by its bytes, in calendarOrderVersion, accepted, calendar, common
+// order.
 func checksum(files ...[]byte) string {
 	h := sha256.New()
 	for _, f := range files {
@@ -161,6 +176,91 @@ func (d *Data) distances() map[string]int {
 		}
 	}
 	return dist
+}
+
+// orderCalendar returns starts in daily puzzle order. It sorts them, shuffles
+// them with a fixed-seed generator so the order is the same on every machine
+// and run, then repairs the order so that for every consecutive pair
+// (yesterday, today), including the wrap from the last word to the first,
+// yesterday's ShortestPath, which the next day reveals, contains neither
+// today's start word nor any word one letter from it. That also keeps today's
+// start word more than one letter from yesterday's.
+//
+// The repair walks the shuffled words and appends the first remaining word
+// that may follow the last one appended; the final word must also precede the
+// first. A word that fits nowhere at the end is inserted at the first earlier
+// gap where it may follow and precede its neighbours.
+func (d *Data) orderCalendar(starts []string) ([]string, error) {
+	pool := shuffleCalendar(starts)
+	if len(pool) < 2 {
+		return pool, nil
+	}
+	paths := make(map[string][]string, len(pool))
+	for _, w := range pool {
+		paths[w], _ = d.ShortestPath(w)
+	}
+	mayFollow := func(yesterday, today string) bool {
+		for _, w := range paths[yesterday] {
+			if w == today || OneLetterApart(w, today) {
+				return false
+			}
+		}
+		return true
+	}
+
+	out := []string{pool[0]}
+	pool = pool[1:]
+	for len(pool) > 0 {
+		last := out[len(out)-1]
+		i := slices.IndexFunc(pool, func(w string) bool {
+			return mayFollow(last, w) && (len(pool) > 1 || mayFollow(w, out[0]))
+		})
+		if i >= 0 {
+			out = append(out, pool[i])
+			pool = slices.Delete(pool, i, i+1)
+			continue
+		}
+		w := pool[0]
+		k := 1
+		for ; k < len(out); k++ {
+			if mayFollow(out[k-1], w) && mayFollow(w, out[k]) {
+				break
+			}
+		}
+		if k == len(out) {
+			return nil, fmt.Errorf("calendar: no place for %q that keeps it off the previous day's shortest ladder", w)
+		}
+		out = slices.Insert(out, k, w)
+		pool = pool[1:]
+	}
+	if last := out[len(out)-1]; !mayFollow(last, out[0]) {
+		return nil, fmt.Errorf("calendar: %q cannot wrap around to %q", last, out[0])
+	}
+	return out, nil
+}
+
+// shuffleCalendar returns starts sorted, then Fisher-Yates shuffled with a
+// generator seeded by calendarSeed.
+func shuffleCalendar(starts []string) []string {
+	out := slices.Sorted(slices.Values(starts))
+	rng := splitMix64(calendarSeed)
+	for i := len(out) - 1; i > 0; i-- {
+		j := int(rng.next() % uint64(i+1))
+		out[i], out[j] = out[j], out[i]
+	}
+	return out
+}
+
+// splitMix64 is a small fixed-algorithm generator, so the calendar order never
+// depends on the Go version's math/rand.
+type splitMix64 uint64
+
+func (s *splitMix64) next() uint64 {
+	*s += 0x9e3779b97f4a7c15
+	z := uint64(*s)
+	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+	z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+	return z ^ (z >> 31)
 }
 
 // Checksum identifies this version of the word lists.
@@ -250,23 +350,25 @@ func (d *Data) ShortestPath(start string) ([]string, bool) {
 	return path, true
 }
 
-// DailyNumber returns the daily puzzle number at t: whole days since
-// 2025-08-14 08:00 UTC, or 0 before then.
+// DailyNumber returns the daily puzzle number at t: 1 plus whole days since
+// #1 opened at 2026-10-11 08:00 UTC. Before then it is 1, so #1 is the first
+// puzzle anyone sees and there is never a #0.
 func DailyNumber(t time.Time) int {
-	if !t.After(dailyEpoch) {
-		return 0
+	if t.Before(dailyEpoch) {
+		return 1
 	}
-	return int(t.Sub(dailyEpoch) / (24 * time.Hour))
+	return int(t.Sub(dailyEpoch)/(24*time.Hour)) + 1
 }
 
 // DailyOpens returns when daily puzzle n opens, 08:00 UTC; puzzle n+1 opens
 // 24 hours later.
 func DailyOpens(n int) time.Time {
-	return dailyEpoch.Add(time.Duration(n) * 24 * time.Hour)
+	return dailyEpoch.Add(time.Duration(n-1) * 24 * time.Hour)
 }
 
-// DailyStart returns the start word of daily puzzle n; the calendar wraps.
+// DailyStart returns the start word of daily puzzle n, calendar entry
+// (n-1) mod length; the calendar wraps.
 func (d *Data) DailyStart(n int) string {
 	size := len(d.calendar)
-	return d.calendar[(n%size+size)%size]
+	return d.calendar[((n-1)%size+size)%size]
 }

@@ -1,6 +1,7 @@
 package ladder
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -186,15 +187,15 @@ func TestDailyNumber(t *testing.T) {
 		at   string
 		want int
 	}{
-		{"2025-01-01T00:00:00Z", 0},
-		{"2025-08-14T08:00:00Z", 0},
-		{"2025-08-15T07:59:59Z", 0},
-		{"2025-08-15T08:00:00Z", 1},
-		{"2026-10-11T07:59:59Z", 422},
-		{"2026-10-11T08:00:00Z", 423},
-		{"2026-10-12T07:59:59Z", 423},
-		{"2026-10-12T08:00:00Z", 424},
-		{"2026-10-11T10:00:00+02:00", 423}, // 08:00 UTC
+		{"2025-08-14T08:00:00Z", 1}, // before launch: still #1, never #0
+		{"2026-10-11T07:59:59Z", 1},
+		{"2026-10-11T08:00:00Z", 1},
+		{"2026-10-12T07:59:59Z", 1},
+		{"2026-10-12T08:00:00Z", 2},
+		{"2026-10-13T07:59:59Z", 2},
+		{"2026-10-13T08:00:00Z", 3},
+		{"2026-10-12T10:00:00+02:00", 2}, // 08:00 UTC
+		{"2029-10-07T08:00:00Z", 1093},   // 1,092 days after launch: the calendar wraps
 	}
 	for _, tt := range tests {
 		at, err := time.Parse(time.RFC3339, tt.at)
@@ -208,41 +209,141 @@ func TestDailyNumber(t *testing.T) {
 }
 
 func TestDailyOpens(t *testing.T) {
-	for n, want := range map[int]string{0: "2025-08-14T08:00:00Z", 423: "2026-10-11T08:00:00Z", 424: "2026-10-12T08:00:00Z"} {
+	for n, want := range map[int]string{1: "2026-10-11T08:00:00Z", 2: "2026-10-12T08:00:00Z", 1093: "2029-10-07T08:00:00Z"} {
 		if got := DailyOpens(n).UTC().Format(time.RFC3339); got != want {
 			t.Errorf("DailyOpens(%d) = %s, want %s", n, got, want)
 		}
 		if got := DailyNumber(DailyOpens(n).Add(time.Second)); got != n {
 			t.Errorf("DailyNumber just after DailyOpens(%d) = %d", n, got)
 		}
+		if got := DailyNumber(DailyOpens(n + 1).Add(-time.Second)); got != n {
+			t.Errorf("DailyNumber just before DailyOpens(%d) = %d", n+1, got)
+		}
 	}
 }
 
 func TestDailyStart(t *testing.T) {
 	d := loadData(t)
-	size := len(d.Calendar())
+	calendar := d.Calendar()
+	size := len(calendar)
+	if size != 1092 {
+		t.Fatalf("calendar length = %d, want 1092", size)
+	}
 	tests := []struct {
 		n    int
 		want string
+		par  int
 	}{
-		{0, "dawn"},
-		{423, "fuse"},
-		{size, "dawn"},
-		{size + 423, "fuse"},
-		{-1, d.Calendar()[size-1]},
+		{1, "pave", 5},
+		{2, "long", 4},
+		{3, "tent", 4},
+		{size, "levy", 6},
+		{size + 1, "pave", 5}, // wraps to the first entry
+		{size + 2, "long", 4},
 	}
 	for _, tt := range tests {
-		if got := d.DailyStart(tt.n); got != tt.want {
+		got := d.DailyStart(tt.n)
+		if got != tt.want {
 			t.Errorf("DailyStart(%d) = %q, want %q", tt.n, got, tt.want)
 		}
+		if par, _ := d.Distance(got); par != tt.par {
+			t.Errorf("par of #%d %q = %d, want %d", tt.n, got, par, tt.par)
+		}
+	}
+	for n := 1; n <= size; n++ {
+		if got := d.DailyStart(n); got != calendar[n-1] {
+			t.Fatalf("DailyStart(%d) = %q, want calendar entry %d %q", n, got, n-1, calendar[n-1])
+		}
+	}
+}
+
+// spoils reports whether yesterday's revealed shortest ladder gives away
+// today's start word: it contains the word or a word one letter from it.
+func spoils(d *Data, yesterday, today string) bool {
+	path, _ := d.ShortestPath(yesterday)
+	for _, w := range path {
+		if w == today || OneLetterApart(w, today) {
+			return true
+		}
+	}
+	return false
+}
+
+func violations(d *Data, order []string) []string {
+	var out []string
+	for i, yesterday := range order {
+		today := order[(i+1)%len(order)]
+		if spoils(d, yesterday, today) || OneLetterApart(yesterday, today) {
+			out = append(out, yesterday+"->"+today)
+		}
+	}
+	return out
+}
+
+func TestCalendarKeepsYesterdaysAnswerOffToday(t *testing.T) {
+	d := loadData(t)
+	calendar := d.Calendar()
+	if bad := violations(d, calendar); len(bad) != 0 {
+		t.Errorf("consecutive days spoil each other, including the wrap: %v", bad)
+	}
+	// The repair is exercised: the plain shuffle breaks the rule.
+	shuffled := shuffleCalendar(calendar)
+	if bad := violations(d, shuffled); len(bad) == 0 {
+		t.Error("the fixed-seed shuffle already satisfies the rule; this test no longer covers the repair")
+	}
+
+	// Same start words as Poople's calendar filtered to distance >= 4, in a new order.
+	raw, err := dataFiles.ReadFile("data/poople-calendar.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var filtered []string
+	for _, w := range strings.Fields(string(raw)) {
+		if dist, ok := d.Distance(w); ok && dist >= MinStartDistance {
+			filtered = append(filtered, w)
+		}
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(filtered)), slices.Sorted(slices.Values(calendar))) {
+		t.Error("calendar words differ from Poople's start words with distance >= 4")
+	}
+	if slices.Equal(filtered[:10], calendar[:10]) {
+		t.Error("calendar still follows Poople's order")
+	}
+
+	again := loadData(t).Calendar()
+	if !slices.Equal(again, calendar) {
+		t.Error("calendar order changed between loads")
+	}
+}
+
+func TestCalendarRefusesOrderThatSpoils(t *testing.T) {
+	// mass and mast are one letter apart, so neither may follow the other.
+	const accepted = "poop\npoos\nposs\npass\nmass\nmast\nmist\n"
+	if _, err := Parse([]byte(accepted), []byte("mass\nmast\n"), nil); err == nil {
+		t.Error("Parse accepted a calendar whose only two words are one letter apart")
+	}
+	// mist's shortest ladder passes through mass, so mist cannot precede mass,
+	// and a two-word calendar wraps.
+	if _, err := Parse([]byte(accepted), []byte("mass\nmist\n"), nil); err == nil {
+		t.Error("Parse accepted a calendar where yesterday's ladder contains today's word")
+	}
+	// One word has no other day to spoil.
+	if _, err := Parse([]byte(accepted), []byte("mist\n"), nil); err != nil {
+		t.Errorf("Parse of a one-word calendar: %v", err)
 	}
 }
 
 func TestChecksum(t *testing.T) {
 	d := loadData(t)
-	const want = "e09353906bb192e316944e4bc5af73861500f357e4e755d1733fb4a892583b4f"
+	const want = "abb39493550b7332eb1dfb7c0a612865a19bc5b73398e16d1cf7f8194028ded7"
 	if got := d.Checksum(); got != want {
-		t.Errorf("Checksum() = %s, want %s; update when the word lists change", got, want)
+		t.Errorf("Checksum() = %s, want %s; update when the word lists or calendarOrderVersion change", got, want)
+	}
+	// Databases loaded before the calendar was reordered hold this checksum;
+	// the new order must arrive as a new list version.
+	const poopleOrder = "e09353906bb192e316944e4bc5af73861500f357e4e755d1733fb4a892583b4f"
+	if d.Checksum() == poopleOrder {
+		t.Error("Checksum() matches the Poople-order version, so existing databases keep the old calendar")
 	}
 	again := loadData(t)
 	if again.Checksum() != d.Checksum() {

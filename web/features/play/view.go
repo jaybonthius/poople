@@ -25,7 +25,7 @@ type playView struct {
 	// SignedIn is true when the viewer has an account.
 	SignedIn bool
 	// Yesterday is the previous daily puzzle's answer when HasYesterday; there
-	// is none while today's puzzle is #0.
+	// is none while today's puzzle is #1.
 	Yesterday    game.Answer
 	HasYesterday bool
 }

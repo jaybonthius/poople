@@ -33,19 +33,19 @@ Features never import each other; shared behaviour is a service passed in from `
 
 ## Word data (versioned)
 
-Source files are tracked in `ladder/data/` and embedded: `csw24-four-letter.txt` (5,662 words), `poople-calendar.txt` (Poople's 1,137 start words in order), `poople-common.txt` (Poople's 2,749-word frequency list). Provenance: `docs/poople-reference.md`.
+Source files are tracked in `ladder/data/` and embedded: `csw24-four-letter.txt` (5,662 words), `poople-calendar.txt` (Poople's 1,137 start words; their order is not used), `poople-common.txt` (Poople's 2,749-word frequency list). Provenance: `docs/poople-reference.md`.
 
-At startup `app` hashes the three files. If the checksum is new it computes everything in Go and commits one transaction:
+At startup `app` hashes the three files and `ladder`'s calendar-order version. If the checksum is new it computes everything in Go and commits one transaction:
 
 - `word_lists(id, checksum UNIQUE, created_at)`; the newest row is current.
 - `words(list_id, word, distance, common)`, `PRIMARY KEY(list_id, word)`, `WITHOUT ROWID`. `distance` is the BFS distance to POOP, NULL when unreachable. `common` marks membership in the frequency list.
-- `calendar_entries(list_id, position, word)`: Poople's calendar order, keeping only words with distance ≥ 4 in this list (1,092 entries for CSW24).
+- `calendar_entries(list_id, position, word)`: Poople's start words with distance ≥ 4 in this list (1,092 entries for CSW24), in `ladder`'s order: a fixed-seed shuffle repaired so that no day's start word is on, or one letter from a word on, the previous day's shortest ladder, including the wrap. The order is derived data, so a new ordering rule bumps the calendar-order version and arrives as a new list version.
 
 Neighbours are generated in Go (each position × 26 letters) and checked against `words`; no links table.
 
-`puzzles(id, kind 'daily'|'unlimited', number, list_id, start_word, par, created_at)`, unique `(kind, number)` for daily. A puzzle row is created the first time anyone opens it and never changes: it freezes the list version, start word and par. Games, guesses, stats and leaderboards reference `puzzles`, never the current list. Daily puzzle `n` = whole days since 2025-08-14 08:00 UTC; its start word is `calendar_entries[n mod count]` of the current list. Unlimited puzzles pick a random current-list word that is `common` with distance ≥ 4 (2,201 candidates).
+`puzzles(id, kind 'daily'|'unlimited', number, list_id, start_word, par, created_at)`, unique `(kind, number)` for daily. A puzzle row is created the first time anyone opens it and never changes: it freezes the list version, start word and par. Games, guesses, stats and leaderboards reference `puzzles`, never the current list. Daily puzzle `n` = 1 + whole days since 2026-10-11 08:00 UTC, and #1 before then (there is no #0); its start word is `calendar_entries[(n − 1) mod count]` of the current list. Unlimited puzzles pick a random current-list word that is `common` with distance ≥ 4 (2,201 candidates).
 
-Expected values for tests (CSW24): 5,586 words reachable from POOP; BOOP absent; daily #0 is DAWN (par 4); daily #423 (2026-10-11 08:00 UTC to 2026-10-12 08:00 UTC) is FUSE (par 5); TIPS has distance 4.
+Expected values for tests (CSW24): 5,586 words reachable from POOP; BOOP absent; daily #1 (2026-10-11 08:00 UTC to 2026-10-12 08:00 UTC) is PAVE (par 5); daily #2 is LONG (par 4); the calendar wraps after 1,092 days, so #1093 is PAVE again; TIPS has distance 4.
 
 ## Migration numbers
 

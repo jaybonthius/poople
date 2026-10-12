@@ -47,7 +47,7 @@ func TestOpenStoresWordDataOnce(t *testing.T) {
 			{"calendar", "SELECT count(*) FROM calendar_entries", 1092},
 			{"boop", "SELECT count(*) FROM words WHERE word = 'boop'", 0},
 			{"tips distance", "SELECT distance FROM words WHERE word = 'tips'", 4},
-			{"calendar 0 is dawn", "SELECT count(*) FROM calendar_entries WHERE position = 0 AND word = 'dawn'", 1},
+			{"calendar 0 is pave", "SELECT count(*) FROM calendar_entries WHERE position = 0 AND word = 'pave'", 1},
 		} {
 			if got := count(t, db, c.query); got != c.want {
 				t.Errorf("%s = %d, want %d", c.name, got, c.want)

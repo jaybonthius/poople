@@ -51,10 +51,10 @@ func (f *fixture) solve(t *testing.T, player int64, puzzle game.Puzzle, at time.
 	}
 }
 
-// dailyOn opens daily puzzle #423+offset at 09:00 UTC that day.
+// dailyOn opens daily puzzle #1+offset at 09:00 UTC that day.
 func (f *fixture) dailyOn(t *testing.T, offset int) (game.Puzzle, time.Time) {
 	t.Helper()
-	at := day423.AddDate(0, 0, offset)
+	at := day1.AddDate(0, 0, offset)
 	f.clock.Set(at)
 	return f.daily(t), at
 }
@@ -74,11 +74,11 @@ func TestStandingsRankEveryFinisherWithoutGaps(t *testing.T) {
 	puzzle := f.daily(t)
 	slow, fast, long, unfinished := f.account(t, "slow", true), f.account(t, "fast", false), f.account(t, "long", false), f.account(t, "unfinished", false)
 	anonymous, viewer := f.player(t), f.player(t)
-	f.solve(t, slow, puzzle, day423, 2*time.Minute, 0)                     // 5 steps in 8 minutes
-	f.solve(t, fast, puzzle, day423.Add(time.Hour), time.Minute, 0)        // 5 steps in 4 minutes
-	f.solve(t, anonymous, puzzle, day423.Add(2*time.Hour), time.Minute, 0) // ties fast, finishing later
-	f.solve(t, long, puzzle, day423.Add(3*time.Hour), time.Minute, 1)      // 7 steps in 6 minutes
-	f.solve(t, viewer, puzzle, day423.Add(4*time.Hour), 2*time.Minute, 1)  // 7 steps in 12 minutes
+	f.solve(t, slow, puzzle, day1, 2*time.Minute, 0)                     // 5 steps in 8 minutes
+	f.solve(t, fast, puzzle, day1.Add(time.Hour), time.Minute, 0)        // 5 steps in 4 minutes
+	f.solve(t, anonymous, puzzle, day1.Add(2*time.Hour), time.Minute, 0) // ties fast, finishing later
+	f.solve(t, long, puzzle, day1.Add(3*time.Hour), time.Minute, 1)      // 7 steps in 6 minutes
+	f.solve(t, viewer, puzzle, day1.Add(4*time.Hour), 2*time.Minute, 1)  // 7 steps in 12 minutes
 	path, _ := csw(t).ShortestPath(puzzle.StartWord)
 	f.guess(t, unfinished, puzzle.ID, path[1], "")
 
@@ -125,7 +125,7 @@ func TestStandingsListTheTopTwentyThenTheViewer(t *testing.T) {
 	for i := range players {
 		players[i] = f.player(t)
 		// Later players take longer, so players[i] finishes in place i.
-		f.solve(t, players[i], puzzle, day423.Add(time.Duration(i)*10*time.Minute), time.Duration(i+1)*time.Second, 0)
+		f.solve(t, players[i], puzzle, day1.Add(time.Duration(i)*10*time.Minute), time.Duration(i+1)*time.Second, 0)
 	}
 	for _, c := range []struct {
 		place   int
@@ -162,8 +162,8 @@ func TestStatsCountDailyFinishesAndStreaks(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	player, other := f.player(t), f.player(t)
-	// Finish #423-#425 (+0, +2, +6), skip #426, finish #427 and #428 (+0, +4),
-	// start #429 without finishing.
+	// Finish #1-#3 (+0, +2, +6), skip #4, finish #5 and #6 (+0, +4),
+	// start #7 without finishing.
 	extra := map[int]int{0: 0, 1: 1, 2: 3, 4: 0, 5: 2}
 	for _, offset := range []int{0, 1, 2, 4, 5} {
 		puzzle, at := f.dailyOn(t, offset)
@@ -187,7 +187,7 @@ func TestStatsCountDailyFinishesAndStreaks(t *testing.T) {
 		Distribution: game.Distribution{2, 0, 1, 0, 1, 0, 1},
 	}
 	if got != want {
-		t.Fatalf("stats during #429 = %+v, want %+v", got, want)
+		t.Fatalf("stats during #7 = %+v, want %+v", got, want)
 	}
 	if avg, ok := got.AverageExtra(); !ok || avg != 2.4 {
 		t.Fatalf("average extra = %v, %v", avg, ok)
@@ -201,7 +201,7 @@ func TestStatsCountDailyFinishesAndStreaks(t *testing.T) {
 	}
 	got = f.stats(t, player)
 	if got.Wins != 6 || got.CurrentStreak != 3 || got.BestStreak != 3 || got.Today == nil || got.Today.Extra() != 0 {
-		t.Fatalf("stats after finishing #429 = %+v", got)
+		t.Fatalf("stats after finishing #7 = %+v", got)
 	}
 	if got.Everyone != (game.Distribution{1, 0, 1, 0, 0, 0, 0}) || got.Better != 0 || got.Tied != 0 || got.Worse != 1 {
 		t.Fatalf("everyone today = %+v", got)
@@ -223,7 +223,7 @@ func TestStatsHideEveryoneUntilThePlayerFinishes(t *testing.T) {
 	f := newFixture(t)
 	player, other := f.player(t), f.player(t)
 	puzzle := f.daily(t)
-	f.solve(t, other, puzzle, day423, time.Second, 0)
+	f.solve(t, other, puzzle, day1, time.Second, 0)
 	path, _ := csw(t).ShortestPath(puzzle.StartWord)
 	f.guess(t, player, puzzle.ID, path[1], "")
 	if got := f.stats(t, player); got.Today != nil || got.Everyone.Total() != 0 || got.Better+got.Tied+got.Worse != 0 {
@@ -235,9 +235,9 @@ func TestStatsUseThePuzzlesFrozenPar(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	player := f.player(t)
-	fuse := f.daily(t)
-	f.solve(t, player, fuse, day423, time.Second, 1) // par 5, 7 steps
-	// A new word list without FUSE leaves #423's par alone.
+	pave := f.daily(t)
+	f.solve(t, player, pave, day1, time.Second, 1) // par 5, 7 steps
+	// A new word list without PAVE leaves #1's par alone.
 	fixture, err := ladder.Parse([]byte("pads\npals\npods\npoop\npoos\n"), []byte("pals\n"), []byte("pals\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -261,7 +261,7 @@ func TestAllTimeRanksAccountsWithEnoughGames(t *testing.T) {
 	f := newFixture(t)
 	ann, bea, cat, dan, eve := f.account(t, "ann", false), f.account(t, "Bea", true), f.account(t, "cat", false), f.account(t, "dan", false), f.account(t, "eve", false)
 	anonymous := f.player(t)
-	// Days #423-#428; extra steps are 2 per detour.
+	// Days #1-#6; extra steps are 2 per detour.
 	plays := map[int64][]int{ // detours by day offset, -1 for no finish
 		ann:       {0, 0, 1, 0, 0, 0},   // avg 2/6, best 6, current 6
 		bea:       {1, 0, 0, -1, 0, 0},  // avg 2/5, best 3, current 2
@@ -278,7 +278,7 @@ func TestAllTimeRanksAccountsWithEnoughGames(t *testing.T) {
 			}
 		}
 	}
-	// It is now #428: ann, Bea, eve and the anonymous player have finished it.
+	// It is now #6: ann, Bea, eve and the anonymous player have finished it.
 	today := f.daily(t)
 	board, err := f.games.AllTime(t.Context(), today, bea)
 	if err != nil {

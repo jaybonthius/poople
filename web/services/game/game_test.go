@@ -17,8 +17,8 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
-// day423 is during daily puzzle #423 (FUSE, par 5 in CSW24).
-var day423 = time.Date(2026, time.October, 11, 9, 0, 0, 0, time.UTC)
+// day1 is during daily puzzle #1 (PAVE, par 5 in CSW24).
+var day1 = time.Date(2026, time.October, 11, 9, 0, 0, 0, time.UTC)
 
 type clock struct {
 	mu  sync.Mutex
@@ -54,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 			t.Error(err)
 		}
 	})
-	c := &clock{now: day423}
+	c := &clock{now: day1}
 	return &fixture{backend: backend, games: game.New(backend, c.Now), clock: c}
 }
 
@@ -129,8 +129,8 @@ func TestDailyPuzzleFollowsCalendarAndChangesAt0800UTC(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	today := f.daily(t)
-	if today.Kind != game.Daily || today.Number != 423 || today.StartWord != "fuse" {
-		t.Fatalf("daily at %v = %+v, want #423 fuse", day423, today)
+	if today.Kind != game.Daily || today.Number != 1 || today.StartWord != "pave" {
+		t.Fatalf("daily at %v = %+v, want #1 pave", day1, today)
 	}
 	if got := f.count(t, "SELECT par FROM puzzles WHERE id = ?", today.ID); got != 5 {
 		t.Fatalf("frozen par = %d, want 5", got)
@@ -140,14 +140,21 @@ func TestDailyPuzzleFollowsCalendarAndChangesAt0800UTC(t *testing.T) {
 		t.Fatalf("07:59:59 next day = %+v, want %+v", again, today)
 	}
 	f.clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
-	if next := f.daily(t); next.Number != 424 || next.ID == today.ID {
-		t.Fatalf("08:00 next day = %+v, want a new #424", next)
+	next := f.daily(t)
+	if next.Number != 2 || next.StartWord != "long" || next.ID == today.ID {
+		t.Fatalf("08:00 next day = %+v, want a new #2 long", next)
 	}
-	f.clock.Set(time.Date(2025, time.August, 14, 8, 0, 0, 0, time.UTC))
-	if first := f.daily(t); first.Number != 0 || first.StartWord != "dawn" {
-		t.Fatalf("daily #0 = %+v, want dawn", first)
+	if got := f.count(t, "SELECT par FROM puzzles WHERE id = ?", next.ID); got != 4 {
+		t.Fatalf("#2 frozen par = %d, want 4", got)
 	}
-	if got := f.count(t, "SELECT count(*) FROM puzzles"); got != 3 {
+	f.clock.Set(time.Date(2026, time.October, 10, 9, 0, 0, 0, time.UTC))
+	if early := f.daily(t); early != today {
+		t.Fatalf("daily before launch = %+v, want #1 %+v", early, today)
+	}
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE number < 1"); got != 0 {
+		t.Fatalf("puzzles numbered below 1 = %d", got)
+	}
+	if got := f.count(t, "SELECT count(*) FROM puzzles"); got != 2 {
 		t.Fatalf("puzzles = %d, want one per opened day", got)
 	}
 }
@@ -156,15 +163,15 @@ func TestGuessRejectionsAreStoredAndSequenced(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	player, puzzle := f.player(t), f.daily(t).ID
-	path, _ := csw(t).ShortestPath("fuse")
+	path, _ := csw(t).ShortestPath("pave")
 	for i, c := range []struct {
 		word string
 		want game.Rejection
 	}{
-		{"fus", game.Incomplete},
+		{"pav", game.Incomplete},
 		{"", game.Incomplete},
 		{"boop", game.NotInList},
-		{"fusee", game.NotInList},
+		{"paved", game.NotInList},
 		{"poop", game.NotOneLetter},
 	} {
 		f.guess(t, player, puzzle, c.word, c.want)
@@ -192,10 +199,10 @@ func TestFinishingRevealsParOnlyAfterwardAndTheDailySolutionNextDay(t *testing.T
 	f := newFixture(t)
 	player, other := f.player(t), f.player(t)
 	puzzle := f.daily(t).ID
-	path, _ := csw(t).ShortestPath("fuse")
+	path, _ := csw(t).ShortestPath("pave")
 	f.guess(t, player, puzzle, "zzzz", game.NotInList) // a rejection does not start the clock
 	for i, word := range path[1:] {
-		f.clock.Set(day423.Add(time.Duration(i+1) * time.Minute))
+		f.clock.Set(day1.Add(time.Duration(i+1) * time.Minute))
 		view := f.view(t, player, puzzle)
 		if view.Finished || view.Par != 0 || view.Solution != nil {
 			t.Fatalf("unfinished view leaks the answer: %+v", view)
@@ -215,7 +222,7 @@ func TestFinishingRevealsParOnlyAfterwardAndTheDailySolutionNextDay(t *testing.T
 	if again := f.view(t, player, puzzle); again.RejectionSeq != view.RejectionSeq || len(again.Ladder) != len(view.Ladder) {
 		t.Fatalf("refused guess changed the game: %+v", again)
 	}
-	if theirs := f.view(t, other, puzzle); theirs.Finished || theirs.Par != 0 || theirs.Solution != nil || !slices.Equal(theirs.Ladder, []string{"fuse"}) {
+	if theirs := f.view(t, other, puzzle); theirs.Finished || theirs.Par != 0 || theirs.Solution != nil || !slices.Equal(theirs.Ladder, []string{"pave"}) {
 		t.Fatalf("another player's view = %+v", theirs)
 	}
 	f.clock.Set(time.Date(2026, time.October, 12, 7, 59, 59, 0, time.UTC))
@@ -261,40 +268,44 @@ func TestYesterdayAnswerFollowsTheCalendarAt0800UTC(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	data := csw(t)
-	answer, ok := f.yesterday(t) // #423 is today; nobody opened #422
-	want, _ := data.ShortestPath(data.DailyStart(422))
-	if !ok || answer.Puzzle.Kind != game.Daily || answer.Puzzle.Number != 422 || answer.Puzzle.StartWord != data.DailyStart(422) ||
-		answer.Par != len(want)-1 || !slices.Equal(answer.Solution, want) {
-		t.Fatalf("yesterday on day #423 = %+v, want #422 %v", answer, want)
+	if answer, ok := f.yesterday(t); ok { // #1 is today
+		t.Fatalf("yesterday during #1 = %+v, want none", answer)
 	}
-	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'daily' AND number = 422 AND par = ?", answer.Par); got != 1 {
+	if got := f.count(t, "SELECT count(*) FROM puzzles"); got != 0 {
+		t.Fatalf("YesterdayAnswer during #1 created %d puzzles", got)
+	}
+	f.clock.Set(time.Date(2026, time.October, 10, 9, 0, 0, 0, time.UTC)) // before launch, still #1
+	if answer, ok := f.yesterday(t); ok {
+		t.Fatalf("yesterday before launch = %+v, want none", answer)
+	}
+
+	f.clock.Set(day1)
+	today := f.daily(t)
+	pave, _ := data.ShortestPath("pave")
+	f.clock.Set(time.Date(2026, time.October, 12, 7, 59, 59, 0, time.UTC))
+	if answer, ok := f.yesterday(t); ok {
+		t.Fatalf("yesterday at 07:59:59 = %+v, want none while #1 is open", answer)
+	}
+	f.clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
+	if answer, ok := f.yesterday(t); !ok || answer.Puzzle != today || answer.Par != 5 || !slices.Equal(answer.Solution, pave) {
+		t.Fatalf("yesterday at 08:00 = %+v, want #1 PAVE par 5 %v", answer, pave)
+	}
+
+	f.clock.Set(time.Date(2026, time.October, 13, 9, 0, 0, 0, time.UTC)) // #3 is today; nobody opened #2
+	answer, ok := f.yesterday(t)
+	want, _ := data.ShortestPath("long")
+	if !ok || answer.Puzzle.Kind != game.Daily || answer.Puzzle.Number != 2 || answer.Puzzle.StartWord != "long" ||
+		answer.Par != 4 || !slices.Equal(answer.Solution, want) {
+		t.Fatalf("yesterday on day #3 = %+v, want #2 LONG par 4 %v", answer, want)
+	}
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'daily' AND number = 2 AND par = 4"); got != 1 {
 		t.Fatal("yesterday's puzzle was not created with its par")
 	}
-	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'daily' AND number >= 423"); got != 0 {
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'daily' AND number >= 3"); got != 0 {
 		t.Fatalf("YesterdayAnswer created %d puzzles from today on", got)
 	}
 	if again, _ := f.yesterday(t); again.Puzzle != answer.Puzzle {
 		t.Fatalf("second read = %+v, want the same puzzle %+v", again.Puzzle, answer.Puzzle)
-	}
-
-	today := f.daily(t)
-	fuse, _ := data.ShortestPath("fuse")
-	f.clock.Set(time.Date(2026, time.October, 12, 7, 59, 59, 0, time.UTC))
-	if answer, _ := f.yesterday(t); answer.Puzzle.Number != 422 || slices.Contains(answer.Solution, "fuse") {
-		t.Fatalf("yesterday at 07:59:59 = %+v, want #422 without today's FUSE", answer)
-	}
-	f.clock.Set(time.Date(2026, time.October, 12, 8, 0, 0, 0, time.UTC))
-	if answer, _ := f.yesterday(t); answer.Puzzle != today || answer.Par != 5 || !slices.Equal(answer.Solution, fuse) {
-		t.Fatalf("yesterday at 08:00 = %+v, want #423 FUSE par 5 %v", answer, fuse)
-	}
-
-	f.clock.Set(time.Date(2025, time.August, 15, 7, 59, 59, 0, time.UTC)) // still #0
-	if answer, ok := f.yesterday(t); ok {
-		t.Fatalf("yesterday during #0 = %+v, want none", answer)
-	}
-	f.clock.Set(time.Date(2025, time.August, 15, 8, 0, 0, 0, time.UTC))
-	if answer, ok := f.yesterday(t); !ok || answer.Puzzle.Number != 0 || answer.Puzzle.StartWord != "dawn" || answer.Par != 4 {
-		t.Fatalf("yesterday during #1 = %+v, want #0 DAWN par 4", answer)
 	}
 }
 
@@ -313,18 +324,18 @@ func TestNewWordListLeavesExistingPuzzlesFrozen(t *testing.T) {
 	if again := f.daily(t); again != today {
 		t.Fatalf("today's puzzle after a new list = %+v, want %+v", again, today)
 	}
-	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE id = ? AND list_id = 1 AND start_word = 'fuse' AND par = 5", today.ID); got != 1 {
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE id = ? AND list_id = 1 AND start_word = 'pave' AND par = 5", today.ID); got != 1 {
 		t.Fatal("existing puzzle changed")
 	}
 	// Today's puzzle still validates and solves against its own list.
-	path, _ := csw(t).ShortestPath("fuse")
+	path, _ := csw(t).ShortestPath("pave")
 	for _, word := range path[1:] {
 		f.guess(t, player, today.ID, word, "")
 	}
 	if view := f.view(t, player, today.ID); view.Par != 5 {
 		t.Fatalf("old puzzle view = %+v", view)
 	}
-	f.clock.Set(day423.Add(24 * time.Hour))
+	f.clock.Set(day1.Add(24 * time.Hour))
 	if answer, _ := f.yesterday(t); answer.Puzzle != today || answer.Par != 5 || !slices.Equal(answer.Solution, path) {
 		t.Fatalf("old puzzle's answer = %+v, want %v from its own list", answer, path)
 	}
@@ -339,7 +350,7 @@ func TestNewWordListLeavesExistingPuzzlesFrozen(t *testing.T) {
 	if view := f.view(t, player, tomorrow.ID); view.Par != 4 {
 		t.Fatalf("new puzzle view = %+v", view)
 	}
-	f.clock.Set(day423.Add(48 * time.Hour))
+	f.clock.Set(day1.Add(48 * time.Hour))
 	if answer, _ := f.yesterday(t); answer.Par != 4 || !slices.Equal(answer.Solution, []string{"pals", "pads", "pods", "poos", "poop"}) {
 		t.Fatalf("new puzzle's answer = %+v", answer)
 	}
@@ -382,7 +393,7 @@ func TestUnlimitedPuzzlesComeFromThePoolAndBelongToOnePlayer(t *testing.T) {
 	if view := f.view(t, alice, last.ID); !slices.Equal(view.Ladder, path[:2]) {
 		t.Fatalf("alice's unlimited ladder = %v", view.Ladder)
 	}
-	if _, err := f.games.Guess(t.Context(), alice, 1_000_000, "fuse"); !errors.Is(err, game.ErrPuzzleNotFound) {
+	if _, err := f.games.Guess(t.Context(), alice, 1_000_000, "pave"); !errors.Is(err, game.ErrPuzzleNotFound) {
 		t.Fatalf("guess on a missing puzzle = %v", err)
 	}
 }
@@ -398,7 +409,7 @@ func TestMergePlayersKeepsTheAccountsGames(t *testing.T) {
 	// The account only had a guess rejected: it has a game row but no ladder,
 	// which must not displace the anonymous player's progress.
 	f.guess(t, account, yesterday.ID, "zzzz", game.NotInList)
-	f.clock.Set(day423.Add(24 * time.Hour))
+	f.clock.Set(day1.Add(24 * time.Hour))
 	today := f.daily(t)
 	todayPath, _ := data.ShortestPath(today.StartWord)
 	f.guess(t, anonymous, today.ID, todayPath[1], "")
@@ -456,7 +467,7 @@ func TestConcurrentGuessesKeepEachLadder(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	puzzle := f.daily(t).ID
-	path, _ := csw(t).ShortestPath("fuse")
+	path, _ := csw(t).ShortestPath("pave")
 	players := []int64{f.player(t), f.player(t)}
 	changes := f.games.PuzzleChanges(puzzle)
 	var wg sync.WaitGroup
@@ -500,7 +511,7 @@ func TestRepeatingTheLastWordChangesNothing(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	player, puzzle := f.player(t), f.daily(t).ID
-	path, _ := csw(t).ShortestPath("fuse")
+	path, _ := csw(t).ShortestPath("pave")
 	f.guess(t, player, puzzle, "zzzz", game.NotInList)
 	unchanged := func(word string) {
 		t.Helper()
@@ -512,7 +523,7 @@ func TestRepeatingTheLastWordChangesNothing(t *testing.T) {
 		default:
 		}
 	}
-	unchanged("FUSE") // the start word is the last word until a guess lands
+	unchanged("PAVE") // the start word is the last word until a guess lands
 	f.guess(t, player, puzzle, path[1], "")
 	unchanged(path[1])
 	view := f.view(t, player, puzzle)

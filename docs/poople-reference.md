@@ -34,6 +34,8 @@ start = START_WORDS[((n % 1137) + 1137) % 1137]
 
 A new puzzle starts at 08:00 UTC; the page shows `#n`. The calendar wraps to the first word on 2028-09-24. Verified: 2026-10-11 is #423 TIPS on the live site.
 
+Our fork does not follow this schedule: its numbering starts at its own launch and its calendar has its own order (see `CONTEXT.md`).
+
 poople.io counts local-time days back to 2025-08-15 08:00 UTC and indexes without wrapping (`undefined` after the list ends). It agrees with pooplegame.com except around DST changes and after the list runs out.
 
 ## Candidate accepted-word lists

@@ -117,11 +117,11 @@ type Answer struct {
 
 // YesterdayAnswer returns the daily puzzle before today's with its par and one
 // shortest ladder, creating that puzzle from the current word list if nobody
-// opened it. It returns false while today's puzzle is #0. It never reads
+// opened it. It returns false while today's puzzle is #1. It never reads
 // today's or a later puzzle.
 func (s *Service) YesterdayAnswer(ctx context.Context) (Answer, bool, error) {
 	number := ladder.DailyNumber(s.now()) - 1
-	if number < 0 {
+	if number < 1 {
 		return Answer{}, false, nil
 	}
 	puzzle, err := s.dailyPuzzle(ctx, number)
@@ -183,7 +183,8 @@ func (s *Service) dailyPuzzle(ctx context.Context, number int) (Puzzle, error) {
 		if count == 0 {
 			return fmt.Errorf("word list %d has no calendar", listID)
 		}
-		start, err := zz.OnceCalendarWord(conn, zz.CalendarWordParams{ListId: listID, Position: int64(number) % count})
+		// Puzzle n uses calendar entry (n-1) mod count, as ladder.DailyStart.
+		start, err := zz.OnceCalendarWord(conn, zz.CalendarWordParams{ListId: listID, Position: int64(number-1) % count})
 		if err != nil {
 			return err
 		}
