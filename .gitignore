@@ -16,3 +16,6 @@ node_modules/
 *.sqlite-wal
 *.sqlite-shm
 /.env
+/.deploy.env
+/deploy/poople.service
+/deploy/Caddyfile

@@ -1,0 +1,20 @@
+[Unit]
+Description=poople
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{USER}}
+Group={{GROUP}}
+WorkingDirectory=/srv/poople
+EnvironmentFile=-/srv/poople/.env
+ExecStart=/srv/poople/poople --data-dir /srv/poople/data --listen 127.0.0.1:8080 --secure-cookie --trusted-proxy
+UMask=0077
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

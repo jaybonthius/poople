@@ -43,6 +43,11 @@ tasks:
       - mkdir -p bin
       - CGO_ENABLED=0 go build -trimpath -o bin/poople ./cmd/web
 
+  deploy:
+    desc: Test, back up and deploy to the target in .deploy.env
+    cmds:
+      - bash scripts/deploy.sh
+
   live:templ:
     cmds:
       - .tools/bin/templ generate -watch -path web
@@ -133,6 +138,6 @@ tasks:
     desc: Generate, build, check formatting, vet and test
     cmds:
       - task: build
-      - test -z "$(gofmt -l app cmd ladder lib store web)"
+      - test -z "$(gofmt -l app cmd ladder lib scripts store web)"
       - task: vet
       - task: test
