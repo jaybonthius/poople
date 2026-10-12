@@ -32,7 +32,7 @@ templ View(v playView) {
 			<h1 class="puzzle-title">Daily #{ v.number() }</h1>
 			<p class="puzzle-date"><time datetime={ v.opens().Format("2006-01-02") }>{ v.opens().Format("Monday 2 January") }</time></p>
 			if v.Game.Finished {
-				<button type="button" class="result-link" style="display: none" data-preserve-attr="style" data-show="$_finishClosed" data-on:click="$_finishClosed = false">Show result</button>
+				@core.ShowResultButton()
 			} else if v.Game.Steps == 0 {
 				<p class="puzzle-hint">Change one letter at a time. Every step must be a word.</p>
 			}
@@ -41,7 +41,7 @@ templ View(v playView) {
 			@core.Ladder(v.Game.Puzzle.StartWord, v.Game.Ladder[1:], ladder.Target, core.LadderOptions{Input: !v.Game.Finished, Fresh: v.Fresh, Rejection: v.rejectionSeq()})
 		</div>
 		@core.Keyboard("/play/guess")
-		@core.Toast(v.rejectionMessage(), v.rejectionSeq())
+		@core.Toast(v.Game.Rejection.Message(), v.rejectionSeq())
 		if v.Game.Finished {
 			@finishSheet(v)
 		}
@@ -49,40 +49,7 @@ templ View(v playView) {
 }
 
 templ finishSheet(v playView) {
-	<div class="sheet-scrim" data-preserve-attr="style" data-show="!$_finishClosed" data-on:click="$_finishClosed = true"></div>
-	<dialog
-		id="finish"
-		class="sheet"
-		open
-		tabindex="-1"
-		aria-labelledby="finish-title"
-		data-preserve-attr="style"
-		data-init="$_finishClosed = false; el.focus()"
-		data-show="!$_finishClosed"
-		data-on:keydown__window="evt.key === 'Escape' && ($_finishClosed = true)"
-	>
-		<div class="sheet-header">
-			<div class="result">
-				if v.perfect() {
-					<h2 class="verdict verdict--perfect" id="finish-title">Perfect!</h2>
-				} else {
-					<h2 class="verdict" id="finish-title">Solved</h2>
-				}
-				<p class="result-route">{ v.route() }</p>
-				<p class="result-score"><span><strong>{ steps(v.Game.Steps) }</strong>, par { strconv.Itoa(v.Game.Par) }</span><span class={ "par-delta", templ.KV("par-delta--even", v.perfect()) }>{ v.parDelta() }</span></p>
-			</div>
-			<button type="button" class="sheet-close" aria-label="Close" data-on:click="$_finishClosed = true"><svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg></button>
-		</div>
-		<section class="sheet-section" aria-labelledby="finish-solution-title">
-			<h3 class="sheet-section-title" id="finish-solution-title">A shortest ladder</h3>
-			<ol class="solution">
-				for _, word := range v.Game.Solution {
-					<li class="solution-step">
-						@core.MiniWord(word, ladder.Target)
-					</li>
-				}
-			</ol>
-		</section>
+	@core.FinishSheet(v.result()) {
 		<div class="share-row">
 			<share-result id="share-result" data-ignore-morph text={ v.shareText() }></share-result>
 			<a class="button" href="/unlimited"><svg class="icon" aria-hidden="true"><use href="#i-unlimited"></use></svg>Play unlimited</a>
@@ -108,7 +75,7 @@ templ finishSheet(v playView) {
 			}
 		</section>
 		<p class="sheet-links"><a class="text-link" href="/stats">Your statistics</a><a class="text-link" href="/leaderboard">Full leaderboard</a></p>
-	</dialog>
+	}
 }
 
 // nextPuzzle counts down to the next 08:00 UTC in the browser from the time

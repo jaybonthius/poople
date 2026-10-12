@@ -1,0 +1,72 @@
+package unlimited
+
+import (
+	"poople/ladder"
+	"poople/lib/static"
+	"poople/web/core"
+)
+
+// Page is the first load. Its stream element opens the live view and reopens
+// it when a first New puzzle gives this browser a player session.
+templ Page(viewer *core.Viewer, v unlimitedView) {
+	@core.Shell("Unlimited", viewer, static.Path("unlimited", "styles/unlimited.css")) {
+		<div
+			data-init={ streamExpr }
+			data-on-signal-patch={ streamExpr }
+			data-on-signal-patch-filter="{include: /^_playerSession$/}"
+		></div>
+		@View(v)
+	}
+}
+
+const (
+	streamExpr         = "@get('/unlimited/state', {retry: 'always', retryMaxCount: Infinity})"
+	newPuzzleExpr      = "@post('/unlimited/new')"
+	unlimitedFinePrint = "Unlimited puzzles never count toward your statistics or the leaderboard."
+)
+
+// View renders <main> from SQLite state, for both the first load and the
+// stream: the start state until the viewer starts a puzzle, then the play
+// surface. Par and the solution are drawn only once the game is finished.
+templ View(v unlimitedView) {
+	<main id="main" class="play unlimited" data-signals={ v.signals() } data-signals:_finish-closed__ifmissing="false">
+		if !v.Playing {
+			<div class="puzzle-heading">
+				<h1 class="puzzle-title">Unlimited</h1>
+			</div>
+			<div class="board">
+				<div class="unlimited-start">
+					<svg class="unlimited-mascot" aria-hidden="true"><use href="#mascot"></use></svg>
+					<p class="unlimited-lede">A fresh start word whenever you want one. Same rules: change one letter at a time until you reach POOP.</p>
+					<button type="button" class="button button--primary" data-on:click={ newPuzzleExpr }><svg class="icon" aria-hidden="true"><use href="#i-unlimited"></use></svg>New puzzle</button>
+					<p class="footnote">{ unlimitedFinePrint }</p>
+				</div>
+			</div>
+		} else {
+			<div class="puzzle-heading">
+				<h1 class="puzzle-title">Unlimited</h1>
+				if v.Game.Finished {
+					@core.ShowResultButton()
+				}
+				<button type="button" class="result-link" data-on:click={ newPuzzleExpr }>New puzzle</button>
+				if !v.Game.Finished && v.Game.Steps == 0 {
+					<p class="puzzle-hint">Change one letter at a time. Every step must be a word.</p>
+				}
+			</div>
+			<div class="board">
+				@core.Ladder(v.Game.Puzzle.StartWord, v.Game.Ladder[1:], ladder.Target, core.LadderOptions{Input: !v.Game.Finished, Fresh: v.Fresh, Rejection: v.rejectionSeq()})
+			</div>
+			@core.Keyboard("/unlimited/guess")
+			@core.Toast(v.Game.Rejection.Message(), v.rejectionSeq())
+			if v.Game.Finished {
+				@core.FinishSheet(v.result()) {
+					<div class="share-row">
+						<button type="button" class="button button--primary" data-on:click={ newPuzzleExpr }><svg class="icon" aria-hidden="true"><use href="#i-unlimited"></use></svg>New puzzle</button>
+						<a class="button" href="/">Daily puzzle</a>
+					</div>
+					<p class="footnote unlimited-note">{ unlimitedFinePrint }</p>
+				}
+			}
+		}
+	</main>
+}

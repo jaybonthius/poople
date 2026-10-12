@@ -37,6 +37,19 @@ const (
 	Incomplete   Rejection = "incomplete"
 )
 
+// Message is the toast text for the rejection, "" for none.
+func (r Rejection) Message() string {
+	switch r {
+	case NotInList:
+		return "Not in word list"
+	case NotOneLetter:
+		return "Not one letter different"
+	case Incomplete:
+		return "Not enough letters"
+	}
+	return ""
+}
+
 var (
 	ErrPuzzleNotFound = errors.New("puzzle not found")
 	ErrGameFinished   = errors.New("game already finished")

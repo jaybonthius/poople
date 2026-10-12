@@ -97,6 +97,29 @@
     }
   }
 
+  /* The finish sheet takes focus when it opens so keyboard and screen-reader
+     users land in it; the sheet itself needs no focus ring. */
+  #finish:focus-visible {
+    outline: none;
+  }
+
+  /* Text buttons in the puzzle heading, such as Show result. */
+  .result-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .result-link:hover {
+    color: var(--wood);
+  }
+
   /* Finish: verdict stamp, route, score */
   .result {
     display: grid;

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"poople/ladder"
+	"poople/web/core"
 	"poople/web/services/game"
 	"poople/web/services/identity"
 )
@@ -36,18 +37,6 @@ func (v playView) signals() string {
 	return string(b)
 }
 
-func (v playView) rejectionMessage() string {
-	switch v.Game.Rejection {
-	case game.NotInList:
-		return "Not in word list"
-	case game.NotOneLetter:
-		return "Not one letter different"
-	case game.Incomplete:
-		return "Not enough letters"
-	}
-	return ""
-}
-
 // rejectionSeq keys the input rung and toast while the latest guess stands rejected.
 func (v playView) rejectionSeq() int {
 	if v.Game.Rejection == "" {
@@ -56,24 +45,17 @@ func (v playView) rejectionSeq() int {
 	return int(v.Game.RejectionSeq)
 }
 
-func (v playView) perfect() bool { return v.Game.Steps == v.Game.Par }
-
-func (v playView) parDelta() string {
-	if over := v.Game.Steps - v.Game.Par; over > 0 {
-		return "+" + strconv.Itoa(over) + " over par"
-	}
-	return "On par"
-}
-
-func (v playView) route() string {
-	return strings.ToUpper(v.Game.Puzzle.StartWord) + " → " + strings.ToUpper(ladder.Target)
+// result is the finish sheet's summary; par and the solution are set only
+// once the game is finished.
+func (v playView) result() core.FinishResult {
+	return core.FinishResult{Start: v.Game.Puzzle.StartWord, Target: ladder.Target, Steps: v.Game.Steps, Par: v.Game.Par, Solution: v.Game.Solution}
 }
 
 // shareText is the spoiler-free result: the puzzle, its route, steps against
 // par and one row per rung, brown where the letter is POOP's in that position.
 func (v playView) shareText() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Poople #%d\n%s · %s (par %d)", v.Game.Puzzle.Number, v.route(), steps(v.Game.Steps), v.Game.Par)
+	fmt.Fprintf(&b, "Poople #%d\n%s · %s (par %d)", v.Game.Puzzle.Number, v.result().Route(), core.StepCount(v.Game.Steps), v.Game.Par)
 	for _, word := range v.Game.Ladder {
 		b.WriteByte('\n')
 		for i := range len(word) {
@@ -98,13 +80,6 @@ func (v playView) othersFootnote() string {
 		also = " also"
 	}
 	return fmt.Sprintf("%d anonymous %s%s solved #%d.", n, players, also, v.Game.Puzzle.Number)
-}
-
-func steps(n int) string {
-	if n == 1 {
-		return "1 step"
-	}
-	return strconv.Itoa(n) + " steps"
 }
 
 // clock formats a duration as m:ss, or h:mm:ss from an hour.

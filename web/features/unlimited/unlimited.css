@@ -1,0 +1,30 @@
+/* Unlimited page: the start state and the finish sheet's fine print. */
+
+@layer feature {
+  .unlimited-start {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-5);
+    max-inline-size: 22rem;
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+  }
+
+  .unlimited-mascot {
+    inline-size: 4.5rem;
+    block-size: 4.5rem;
+  }
+
+  .unlimited-lede {
+    font-size: var(--text-lg);
+    text-wrap: pretty;
+  }
+
+  .unlimited-start .button {
+    min-inline-size: 12rem;
+  }
+
+  .unlimited-note {
+    text-align: center;
+  }
+}

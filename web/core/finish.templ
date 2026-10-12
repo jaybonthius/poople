@@ -1,0 +1,53 @@
+package core
+
+import "strconv"
+
+// FinishSheet is the finish sheet: scrim, verdict, route, steps against par
+// and the shortest solution, then children for the page's own sections.
+// Render it only for a finished game, inside a <main> that declares
+// data-signals:_finish-closed__ifmissing="false"; closing hides the sheet
+// until ShowResultButton reopens it.
+templ FinishSheet(r FinishResult) {
+	<div class="sheet-scrim" data-preserve-attr="style" data-show="!$_finishClosed" data-on:click="$_finishClosed = true"></div>
+	<dialog
+		id="finish"
+		class="sheet"
+		open
+		tabindex="-1"
+		aria-labelledby="finish-title"
+		data-preserve-attr="style"
+		data-init="$_finishClosed = false; el.focus()"
+		data-show="!$_finishClosed"
+		data-on:keydown__window="evt.key === 'Escape' && ($_finishClosed = true)"
+	>
+		<div class="sheet-header">
+			<div class="result">
+				if r.Perfect() {
+					<h2 class="verdict verdict--perfect" id="finish-title">Perfect!</h2>
+				} else {
+					<h2 class="verdict" id="finish-title">Solved</h2>
+				}
+				<p class="result-route">{ r.Route() }</p>
+				<p class="result-score"><span><strong>{ StepCount(r.Steps) }</strong>, par { strconv.Itoa(r.Par) }</span><span class={ "par-delta", templ.KV("par-delta--even", r.Perfect()) }>{ r.parDelta() }</span></p>
+			</div>
+			<button type="button" class="sheet-close" aria-label="Close" data-on:click="$_finishClosed = true"><svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg></button>
+		</div>
+		<section class="sheet-section" aria-labelledby="finish-solution-title">
+			<h3 class="sheet-section-title" id="finish-solution-title">A shortest ladder</h3>
+			<ol class="solution">
+				for _, word := range r.Solution {
+					<li class="solution-step">
+						@MiniWord(word, r.Target)
+					</li>
+				}
+			</ol>
+		</section>
+		{ children... }
+	</dialog>
+}
+
+// ShowResultButton reopens a closed finish sheet; it shows only while the
+// sheet is closed.
+templ ShowResultButton() {
+	<button type="button" class="result-link" style="display: none" data-preserve-attr="style" data-show="$_finishClosed" data-on:click="$_finishClosed = false">Show result</button>
+}
