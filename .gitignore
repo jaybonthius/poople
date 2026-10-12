@@ -9,8 +9,6 @@
 /web/**/static/**/*.map
 /data/
 /artifacts/
-/.pi/subagents/
-/.pi-subagents/
 node_modules/
 *.sqlite
 *.sqlite-wal
