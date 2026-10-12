@@ -492,3 +492,25 @@ func TestUnlimitedLeavesDailyPlayAlone(t *testing.T) {
 		t.Fatalf("unlimited game has %d guesses", got)
 	}
 }
+
+func TestFirstNewPuzzleResponseIsNotStored(t *testing.T) {
+	f := newFixture(t)
+	w := f.post(t, "/unlimited/new", "", map[string]any{})
+	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("first New puzzle status=%d Cache-Control=%q", w.Code, w.Header().Get("Cache-Control"))
+	}
+}
+
+func TestNewPuzzlesAreRateLimitedPerClient(t *testing.T) {
+	f := newFixture(t)
+	session, _ := f.newPuzzle(t, "")
+	for range 19 {
+		f.newPuzzle(t, session)
+	}
+	if w := f.post(t, "/unlimited/new", session, map[string]any{}); w.Code != http.StatusTooManyRequests {
+		t.Fatalf("21st New puzzle status=%d", w.Code)
+	}
+	if got := f.count(t, "SELECT count(*) FROM puzzles WHERE kind = 'unlimited'"); got != 20 {
+		t.Fatalf("unlimited puzzles = %d, want 20", got)
+	}
+}

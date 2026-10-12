@@ -64,35 +64,33 @@ func (s *Setup) Valid(ctx context.Context, token string) (bool, error) {
 }
 
 // CreateAdmin creates the first account as admin, attached to the browser's
-// player like SignUp, then consumes the operator token. The returned session is
-// nil when the browser's session is kept.
-func (s *Setup) CreateAdmin(ctx context.Context, token, browserToken, username, password string) (*Account, *Session, error) {
+// player with a fresh session like SignUp, then consumes the operator token.
+func (s *Setup) CreateAdmin(ctx context.Context, token, browserToken, username, password string) (*Account, Session, error) {
 	valid, err := s.Valid(ctx, token)
 	if err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	if !valid {
-		return nil, nil, ErrInvalidSetupToken
+		return nil, Session{}, ErrInvalidSetupToken
 	}
 	normalized, valid := normalizeUsername(username)
 	if !valid {
-		return nil, nil, ErrUsernameInvalid
+		return nil, Session{}, ErrUsernameInvalid
 	}
 	if err := validatePassword(password); err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	passwordHash, err := hashPassword(password)
 	if err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	fresh, err := newSession()
 	if err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var account *Account
-	var issued *Session
 	if err := s.users.db.Write(ctx, func(conn *sqlite.Conn) error {
 		if !s.valid(token) {
 			return ErrInvalidSetupToken
@@ -104,13 +102,13 @@ func (s *Setup) CreateAdmin(ctx context.Context, token, browserToken, username, 
 		if count != 0 {
 			return ErrSetupComplete
 		}
-		account, issued, err = createAccount(conn, browserToken, fresh, normalized, passwordHash, true)
+		account, err = createAccount(conn, browserToken, fresh, normalized, passwordHash, true)
 		return err
 	}); err != nil {
-		return nil, nil, fmt.Errorf("create admin account: %w", err)
+		return nil, Session{}, fmt.Errorf("create admin account: %w", err)
 	}
 	s.consumed = true
 	s.tokenHash = [32]byte{}
 	s.users.notifyAccounts()
-	return account, issued, nil
+	return account, fresh, nil
 }

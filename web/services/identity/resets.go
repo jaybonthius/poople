@@ -90,6 +90,7 @@ func (s *Service) ResetPassword(ctx context.Context, token, browserToken, passwo
 	}
 	hash := tokenHash(token)
 	var account *Account
+	var merged func()
 	if err := s.db.Write(ctx, func(conn *sqlite.Conn) error {
 		now := time.Now().UnixMilli()
 		reset, err := zz.OnceGetPasswordReset(conn, zz.GetPasswordResetParams{TokenHash: hash, Now: now})
@@ -118,7 +119,7 @@ func (s *Service) ResetPassword(ctx context.Context, token, browserToken, passwo
 		if err := zz.OnceDeletePlayerSessions(conn, row.PlayerID); err != nil {
 			return err
 		}
-		if err := s.signIn(conn, browserToken, row.PlayerID, session); err != nil {
+		if merged, err = s.signIn(conn, browserToken, row.PlayerID, session); err != nil {
 			return err
 		}
 		account = row.account()
@@ -129,6 +130,7 @@ func (s *Service) ResetPassword(ctx context.Context, token, browserToken, passwo
 		}
 		return nil, Session{}, fmt.Errorf("reset password: %w", err)
 	}
+	merged()
 	// Wake views so the account's revoked sessions stop streaming.
 	s.notifyAccounts()
 	return account, session, nil

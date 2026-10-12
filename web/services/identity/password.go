@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"regexp"
+	"runtime"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
@@ -24,6 +26,25 @@ const (
 	PasswordMinLength = 10
 	PasswordMaxLength = 128
 )
+
+// passwordSlots bounds concurrent Argon2 hashes, each holding passwordMemory
+// KiB, so parallel log-in attempts cannot exhaust memory. A hash waits at most
+// passwordSlotWait for a slot, then fails with ErrPasswordBusy.
+var passwordSlots = make(chan struct{}, runtime.GOMAXPROCS(0))
+
+const passwordSlotWait = time.Second
+
+func passwordKey(password string, salt []byte) ([]byte, error) {
+	wait := time.NewTimer(passwordSlotWait)
+	defer wait.Stop()
+	select {
+	case passwordSlots <- struct{}{}:
+	case <-wait.C:
+		return nil, ErrPasswordBusy
+	}
+	defer func() { <-passwordSlots }()
+	return argon2.IDKey([]byte(password), salt, passwordIterations, passwordMemory, passwordParallelism, passwordKeyBytes), nil
+}
 
 // Usernames are ASCII so SQLite's NOCASE collation compares them case-insensitively.
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{2,23}$`)
@@ -54,28 +75,35 @@ func hashPassword(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("generate password salt: %w", err)
 	}
-	key := argon2.IDKey([]byte(password), salt, passwordIterations, passwordMemory, passwordParallelism, passwordKeyBytes)
+	key, err := passwordKey(password, salt)
+	if err != nil {
+		return "", err
+	}
 	return passwordPrefix + base64.RawStdEncoding.EncodeToString(salt) + "$" + base64.RawStdEncoding.EncodeToString(key), nil
 }
 
-func passwordMatches(password, hash string) bool {
+// passwordMatches reports whether password matches hash; its only error is ErrPasswordBusy.
+func passwordMatches(password, hash string) (bool, error) {
 	// Accept only this application's fixed PHC format. Never let stored input
 	// control Argon2 memory, iterations, parallelism or allocation lengths.
 	if len(hash) != len(passwordPrefix)+22+1+43 || !strings.HasPrefix(hash, passwordPrefix) {
-		return false
+		return false, nil
 	}
 	saltText, keyText, ok := strings.Cut(hash[len(passwordPrefix):], "$")
 	if !ok || len(saltText) != 22 || len(keyText) != 43 {
-		return false
+		return false, nil
 	}
 	salt, err := base64.RawStdEncoding.Strict().DecodeString(saltText)
 	if err != nil || len(salt) != passwordSaltBytes {
-		return false
+		return false, nil
 	}
 	key, err := base64.RawStdEncoding.Strict().DecodeString(keyText)
 	if err != nil || len(key) != passwordKeyBytes {
-		return false
+		return false, nil
 	}
-	candidate := argon2.IDKey([]byte(password), salt, passwordIterations, passwordMemory, passwordParallelism, passwordKeyBytes)
-	return subtle.ConstantTimeCompare(candidate, key) == 1
+	candidate, err := passwordKey(password, salt)
+	if err != nil {
+		return false, err
+	}
+	return subtle.ConstantTimeCompare(candidate, key) == 1, nil
 }

@@ -49,7 +49,19 @@ func Open(ctx context.Context, dataDir string) (_ *Store, err error) {
 	if strings.ContainsAny(path, "?#%") {
 		return nil, fmt.Errorf("data directory path must not contain '?', '#' or '%%': %s", dir)
 	}
+	// The database holds password and session hashes: only the owner may read
+	// it, even when the directory or file already existed with wider modes.
 	if err = os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	if err = os.Chmod(dir, 0o700); err != nil {
+		return nil, err
+	}
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err = errors.Join(file.Chmod(0o600), file.Close()); err != nil {
 		return nil, err
 	}
 	if err = migrate(ctx, path); err != nil {

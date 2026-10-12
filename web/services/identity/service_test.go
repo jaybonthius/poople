@@ -65,10 +65,10 @@ func createAdmin(t *testing.T, users *identity.Service) (*identity.Account, iden
 		t.Fatalf("setup token=%q err=%v", token, err)
 	}
 	admin, session, err := setup.CreateAdmin(t.Context(), token, "", "Admin", fixturePassword)
-	if err != nil || session == nil {
+	if err != nil {
 		t.Fatalf("create admin: %v", err)
 	}
-	return admin, *session
+	return admin, session
 }
 
 // anonymousPlayer makes a first command through WithPlayer and EnsurePlayer, returning the cookie token.
@@ -128,29 +128,39 @@ func TestSetupIsGatedAndAtomic(t *testing.T) {
 	// The setup link belongs to an anonymous player who already played.
 	playerID, browser := anonymousPlayer(t, users)
 	var wg sync.WaitGroup
-	results := make(chan error, 8)
+	type result struct {
+		session identity.Session
+		err     error
+	}
+	results := make(chan result, 8)
 	for i := range 8 {
 		wg.Go(func() {
-			_, _, err := setup.CreateAdmin(context.Background(), token, browser, "admin"+strconv.Itoa(i), fixturePassword)
-			results <- err
+			_, session, err := setup.CreateAdmin(context.Background(), token, browser, "admin"+strconv.Itoa(i), fixturePassword)
+			results <- result{session, err}
 		})
 	}
 	wg.Wait()
 	close(results)
 	succeeded := 0
-	for err := range results {
-		if err == nil {
+	var session identity.Session
+	for result := range results {
+		if result.err == nil {
 			succeeded++
-		} else if !errors.Is(err, identity.ErrInvalidSetupToken) && !errors.Is(err, identity.ErrSetupComplete) {
-			t.Fatal(err)
+			session = result.session
+		} else if !errors.Is(result.err, identity.ErrInvalidSetupToken) && !errors.Is(result.err, identity.ErrSetupComplete) {
+			t.Fatal(result.err)
 		}
 	}
 	if succeeded != 1 || scalar(t, db, "SELECT count(*) FROM accounts") != 1 || scalar(t, db, "SELECT count(*) FROM accounts WHERE is_admin = 1") != 1 {
 		t.Fatal("concurrent setup did not create exactly one admin")
 	}
-	v := viewer(t, users, browser)
+	v := viewer(t, users, session.Token)
 	if v.PlayerID != playerID || v.Account == nil || !v.Account.IsAdmin {
 		t.Fatalf("setup did not attach the admin to the browser's player: %+v", v)
+	}
+	// A cookie planted before setup must not become the admin's session.
+	if _, err := users.ViewerForSession(t.Context(), browser); !errors.Is(err, identity.ErrInvalidSession) {
+		t.Fatal("setup kept the browser's pre-setup session")
 	}
 	if ok, _ := setup.Valid(t.Context(), token); ok {
 		t.Fatal("consumed setup token still valid")
@@ -167,16 +177,20 @@ func TestSignUpKeepsThePlayerAndRejectsDuplicateUsernames(t *testing.T) {
 	createAdmin(t, users)
 	playerID, browser := anonymousPlayer(t, users)
 	account, session, err := users.SignUp(t.Context(), browser, " Mira ", fixturePassword)
-	if err != nil || session != nil {
-		t.Fatalf("sign-up issued a new session or failed: %v", err)
+	if err != nil {
+		t.Fatalf("sign-up: %v", err)
 	}
 	if account.Username != "Mira" || account.IsAdmin {
 		t.Fatalf("account=%+v", account)
 	}
-	if v := viewer(t, users, browser); v.PlayerID != playerID || v.Account == nil || v.Account.ID != account.ID {
+	if v := viewer(t, users, session.Token); v.PlayerID != playerID || v.Account == nil || v.Account.ID != account.ID {
 		t.Fatalf("sign-up changed the player: %+v", v)
 	}
-	if _, _, err := users.SignUp(t.Context(), browser, "other", fixturePassword); !errors.Is(err, identity.ErrAlreadySignedUp) {
+	// A cookie planted before sign-up must not become the account's session.
+	if _, err := users.ViewerForSession(t.Context(), browser); !errors.Is(err, identity.ErrInvalidSession) {
+		t.Fatal("sign-up kept the browser's pre-sign-up session")
+	}
+	if _, _, err := users.SignUp(t.Context(), session.Token, "other", fixturePassword); !errors.Is(err, identity.ErrAlreadySignedUp) {
 		t.Fatalf("second account for one player: %v", err)
 	}
 	for _, name := range []string{"mira", "MIRA", "admin"} {
@@ -190,7 +204,7 @@ func TestSignUpKeepsThePlayerAndRejectsDuplicateUsernames(t *testing.T) {
 		}
 	}
 	fresh, session, err := users.SignUp(t.Context(), "", "ollie", fixturePassword)
-	if err != nil || session == nil {
+	if err != nil {
 		t.Fatalf("sign-up without a session: %v", err)
 	}
 	if v := viewer(t, users, session.Token); v.PlayerID == playerID || v.Account.ID != fresh.ID {
@@ -228,13 +242,17 @@ func TestLoginMergesTheAnonymousPlayerInsideTheTransaction(t *testing.T) {
 	type call struct{ from, to int64 }
 	var calls []call
 	var failure error
-	users := openIdentity(t, db, func(conn *sqlite.Conn, from, to int64) error {
+	committed := 0
+	users := openIdentity(t, db, func(conn *sqlite.Conn, from, to int64) (func(), error) {
 		calls = append(calls, call{from, to})
 		// A write here must commit or roll back with the log-in.
 		if err := sqlitex.Execute(conn, "INSERT INTO app_meta(key, value) VALUES ('merged-' || ?1, ?2)", &sqlitex.ExecOptions{Args: []any{from, to}}); err != nil {
-			return err
+			return nil, err
 		}
-		return failure
+		if failure != nil {
+			return nil, failure
+		}
+		return func() { committed++ }, nil
 	})
 	_, adminSession := createAdmin(t, users)
 	adminPlayer := viewer(t, users, adminSession.Token).PlayerID
@@ -262,6 +280,9 @@ func TestLoginMergesTheAnonymousPlayerInsideTheTransaction(t *testing.T) {
 	}
 	if len(calls) != 1 || calls[0] != (call{anonymous, adminPlayer}) {
 		t.Fatalf("merge calls=%v, want from %d to %d", calls, anonymous, adminPlayer)
+	}
+	if committed != 1 {
+		t.Fatalf("merge commit hook ran %d times, want once after the log-in", committed)
 	}
 	if scalar(t, db, "SELECT value FROM app_meta WHERE key = 'merged-' || ?1", anonymous) != adminPlayer {
 		t.Fatal("hook write did not commit with the log-in")

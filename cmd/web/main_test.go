@@ -27,6 +27,7 @@ func TestLauncherRejectsInvalidInputBeforeStorage(t *testing.T) {
 		{"--data-dir", "PLACEHOLDER", "--ui-fps=-1"},
 		{"--data-dir", "PLACEHOLDER", "--ui-fps=1000000001"},
 		{"--data-dir", "PLACEHOLDER", "--ui-fps=fast"},
+		{"--data-dir", "PLACEHOLDER", "--trusted-proxy=maybe"},
 	} {
 		dir := filepath.Join(t.TempDir(), "not-created")
 		for i := range args {

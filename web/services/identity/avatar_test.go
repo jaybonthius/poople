@@ -2,6 +2,7 @@ package identity_test
 
 import (
 	"bytes"
+	"compress/zlib"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -57,6 +58,42 @@ func pngHeader(width, height uint32) []byte {
 	binary.Write(&buf, binary.BigEndian, uint32(len(ihdr)))
 	buf.Write(chunk)
 	binary.Write(&buf, binary.BigEndian, crc32.ChecksumIEEE(chunk))
+	return buf.Bytes()
+}
+
+// pngChunk appends one PNG chunk with its CRC.
+func pngChunk(buf *bytes.Buffer, kind string, data []byte) {
+	chunk := append([]byte(kind), data...)
+	binary.Write(buf, binary.BigEndian, uint32(len(data)))
+	buf.Write(chunk)
+	binary.Write(buf, binary.BigEndian, crc32.ChecksumIEEE(chunk))
+}
+
+// blankPNG16 is a complete, valid all-zero 16-bit RGBA PNG, written row by row
+// so the test never holds the decoded image: a small file that decodes to
+// width×height×8 bytes.
+func blankPNG16(t *testing.T, width, height int) []byte {
+	t.Helper()
+	var pixels bytes.Buffer
+	z := zlib.NewWriter(&pixels)
+	row := make([]byte, 1+width*8) // filter byte, then zero pixels
+	for range height {
+		if _, err := z.Write(row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := z.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	buf.WriteString("\x89PNG\r\n\x1a\n")
+	ihdr := make([]byte, 13)
+	binary.BigEndian.PutUint32(ihdr[0:], uint32(width))
+	binary.BigEndian.PutUint32(ihdr[4:], uint32(height))
+	ihdr[8], ihdr[9] = 16, 6 // 16-bit RGBA
+	pngChunk(&buf, "IHDR", ihdr)
+	pngChunk(&buf, "IDAT", pixels.Bytes())
+	pngChunk(&buf, "IEND", nil)
 	return buf.Bytes()
 }
 
@@ -138,9 +175,18 @@ func TestSetAvatarRejectsOversizedAndUnsupportedUploads(t *testing.T) {
 	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>`)
 	for name, upload := range map[string][]byte{
 		"bmp": bmp, "svg": svg, "empty": nil, "truncated png": pngHeader(64, 64),
-		"decompression bomb": pngHeader(50000, 50000),
 	} {
 		if _, err := users.SetAvatar(t.Context(), admin.ID, bytes.NewReader(upload)); !errors.Is(err, identity.ErrAvatarInvalid) {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	// 3000×3000 at 16 bits per channel is a small file that decodes to 72 MB.
+	bomb := blankPNG16(t, 3000, 3000)
+	if len(bomb) > identity.AvatarMaxBytes {
+		t.Fatalf("bomb is %d bytes, over the upload limit", len(bomb))
+	}
+	for name, upload := range map[string][]byte{"claimed dimensions": pngHeader(50000, 50000), "16-bit bomb": bomb} {
+		if _, err := users.SetAvatar(t.Context(), admin.ID, bytes.NewReader(upload)); !errors.Is(err, identity.ErrAvatarDimensions) {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}

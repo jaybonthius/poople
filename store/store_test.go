@@ -155,3 +155,43 @@ func TestOpenRejectsMissingOrAmbiguousDirectoryAndCancellation(t *testing.T) {
 		t.Fatal("cancelled open created storage")
 	}
 }
+
+func TestOpenMakesAnExistingDataDirectoryAndDatabasePrivate(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join(t.TempDir(), "data")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o755); err != nil { // the umask may have narrowed Mkdir
+		t.Fatal(err)
+	}
+	testStore(t, dir)
+	if info, err := os.Stat(dir); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("data directory mode = %v, %v; want 0700", info.Mode().Perm(), err)
+	}
+	for _, name := range []string{Filename, Filename + "-wal"} {
+		if info, err := os.Stat(filepath.Join(dir, name)); err != nil || info.Mode().Perm() != 0o600 {
+			t.Fatalf("%s mode = %v, %v; want 0600", name, info.Mode().Perm(), err)
+		}
+	}
+}
+
+func TestOpenMakesAnExistingDatabaseFilePrivate(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	first, err := Open(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, Filename)
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testStore(t, dir)
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("database mode = %v, %v; want 0600", info.Mode().Perm(), err)
+	}
+}

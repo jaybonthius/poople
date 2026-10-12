@@ -5,11 +5,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,6 +38,12 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	return newFixtureAt(t, time.Now)
+}
+
+// newFixtureAt runs the app on the clock now; the fixture's puzzle is the one
+// open when it is created.
+func newFixtureAt(t *testing.T, now func() time.Time) *fixture {
 	t.Helper()
 	backend, err := app.Open(t.Context(), t.TempDir())
 	if err != nil {
@@ -45,7 +54,7 @@ func newFixture(t *testing.T) *fixture {
 			t.Error(err)
 		}
 	})
-	handler, token, err := web.NewApp(t.Context(), backend, false, 1000)
+	handler, token, err := web.NewApp(t.Context(), backend, false, 1000, web.WithClock(now))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +62,7 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	number := ladder.DailyNumber(time.Now())
+	number := ladder.DailyNumber(now())
 	start := data.DailyStart(number)
 	path, ok := data.ShortestPath(start)
 	if !ok {
@@ -198,18 +207,23 @@ func (f *fixture) stream(t *testing.T, server *httptest.Server, session string, 
 		scanner.Buffer(make([]byte, 1<<20), 1<<20)
 		// An event's elements arrive as several "data: elements" lines, one per
 		// line of HTML; a blank line ends the event.
-		var lines []string
+		// Signal patches are kept and appended to the next frame for assertHidden.
+		var lines, signals []string
 		for scanner.Scan() {
 			line := scanner.Text()
 			if element, ok := strings.CutPrefix(line, "data: elements "); ok {
 				lines = append(lines, element)
 				continue
 			}
+			if strings.HasPrefix(line, "data: signals ") {
+				signals = append(signals, line)
+				continue
+			}
 			if line != "" || len(lines) == 0 {
 				continue
 			}
-			frame := strings.Join(lines, "\n")
-			lines = nil
+			frame := strings.Join(append(lines, signals...), "\n")
+			lines, signals = nil, nil
 			if !strings.HasPrefix(frame, `<main id="main" class="play"`) {
 				continue
 			}
@@ -237,23 +251,44 @@ func (s *stream) next(t *testing.T) string {
 	}
 }
 
-// assertHidden fails when html reveals par, a solution word the ladder does
+var signalAttribute = regexp.MustCompile(`data-signals[^=\s>]*="([^"]*)"`)
+
+// signalText is the signal data a response carries: data-signals attribute
+// values and SSE "data: signals" lines, lower-cased.
+func signalText(body string) string {
+	var text []string
+	for _, match := range signalAttribute.FindAllStringSubmatch(body, -1) {
+		text = append(text, html.UnescapeString(match[1]))
+	}
+	for line := range strings.SplitSeq(body, "\n") {
+		if signals, ok := strings.CutPrefix(line, "data: signals "); ok {
+			text = append(text, signals)
+		}
+	}
+	return strings.ToLower(strings.Join(text, "\n"))
+}
+
+// assertHidden fails when body reveals par, a solution word the ladder does
 // not show yet, or a later puzzle's start word.
-func (f *fixture) assertHidden(t *testing.T, html string, shownSteps int) {
+func (f *fixture) assertHidden(t *testing.T, body string, shownSteps int) {
 	t.Helper()
 	for _, secret := range []string{"result-score", ", par ", "(par ", "A shortest ladder", "Poople #", "standings"} {
-		if strings.Contains(html, secret) {
+		if strings.Contains(body, secret) {
 			t.Fatalf("unfinished response contains %q", secret)
 		}
+	}
+	signals := signalText(body)
+	if regexp.MustCompile(`\bpar\b`).MatchString(signals) {
+		t.Fatalf("unfinished response's signals mention par: %s", signals)
 	}
 	unseen := []string{f.tomorrow}
 	for _, word := range f.path[shownSteps+1 : len(f.path)-1] { // POOP is always the goal
 		unseen = append(unseen, word)
 	}
 	// Words are drawn in capitals; lower-case four-letter strings also occur in
-	// scripts and hashed asset names.
+	// scripts and hashed asset names, so lower case is checked only in signals.
 	for _, word := range unseen {
-		if strings.Contains(html, strings.ToUpper(word)) {
+		if strings.Contains(body, strings.ToUpper(word)) || regexp.MustCompile(`\b`+word+`\b`).MatchString(signals) {
 			t.Fatalf("unfinished response contains %q", word)
 		}
 	}
@@ -435,6 +470,121 @@ func TestAGuessUpdatesAnotherViewersLeaderboard(t *testing.T) {
 	bob := f.account(t, "/signup", "bob", map[string]string{})
 	f.finish(t, bob)
 	for !strings.Contains(frame, "bob") {
+		frame = watching.next(t)
+	}
+}
+
+func TestFirstGuessResponseIsNotStored(t *testing.T) {
+	f := newFixture(t)
+	w := f.post(t, "/play/guess", "", map[string]any{"guess": f.path[1]})
+	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("first guess status=%d Cache-Control=%q", w.Code, w.Header().Get("Cache-Control"))
+	}
+	f.assertHidden(t, w.Body.String(), 1)
+}
+
+func TestNewPlayersAreRateLimitedPerClient(t *testing.T) {
+	f := newFixture(t)
+	var session string
+	for range 10 {
+		session = f.guess(t, "", "zzzz")
+	}
+	w := f.post(t, "/play/guess", "", map[string]any{"guess": "zzzz"})
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("eleventh new player status=%d", w.Code)
+	}
+	if got := f.count(t, "SELECT count(*) FROM players"); got != 10 {
+		t.Fatalf("players = %d, want 10", got)
+	}
+	// Players who already exist keep guessing.
+	for _, word := range f.path[1:3] {
+		f.guess(t, session, word)
+	}
+}
+
+// runningClock runs in real time from a time the test sets.
+type runningClock struct {
+	mu        sync.Mutex
+	base, set time.Time
+}
+
+func (c *runningClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.base.Add(time.Since(c.set))
+}
+
+func (c *runningClock) Set(base time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.base, c.set = base, time.Now()
+}
+
+func TestStreamMovesToTheNextPuzzleAt0800UTCAndDropsGuessesOnTheClosedOne(t *testing.T) {
+	const number = 500
+	opens := ladder.DailyOpens(number + 1)
+	clock := &runningClock{}
+	clock.Set(opens.Add(-time.Hour))
+	f := newFixtureAt(t, clock.Now)
+	server := f.server(t)
+	clock.Set(opens.Add(-time.Second))
+	session := f.guess(t, "", f.path[1])
+	closed := f.count(t, "SELECT id FROM puzzles WHERE kind = 'daily'")
+	watching := f.stream(t, server, session, nil)
+	frame := watching.next(t)
+	if !strings.Contains(frame, "Daily #"+strconv.Itoa(number)+"<") || !strings.Contains(frame, strings.ToUpper(f.path[1])) {
+		t.Fatalf("frame before 08:00 UTC is not puzzle #%d with the guess", number)
+	}
+	f.assertHidden(t, frame, 1)
+	// Nothing commits; the stream's own timer moves it on at 08:00 UTC.
+	frame = watching.next(t)
+	if !strings.Contains(frame, "Daily #"+strconv.Itoa(number+1)+"<") || !strings.Contains(frame, strings.ToUpper(f.tomorrow)+", start word") {
+		t.Fatalf("frame after 08:00 UTC is not puzzle #%d", number+1)
+	}
+	// A guess the browser typed against the closed puzzle is dropped.
+	if w := f.post(t, "/play/guess", session, map[string]any{"guess": f.path[2], "puzzleId": closed}); w.Code != http.StatusNoContent {
+		t.Fatalf("guess on the closed puzzle status=%d", w.Code)
+	}
+	if got := f.count(t, "SELECT count(*) FROM guesses"); got != 1 {
+		t.Fatalf("guesses = %d after a guess on the closed puzzle", got)
+	}
+}
+
+func TestSigningUpNamesTheFinisherOnAnotherViewersLeaderboard(t *testing.T) {
+	f := newFixture(t)
+	server := f.server(t)
+	admin := f.account(t, "/setup", "Admin", map[string]string{"setupToken": f.setupToken})
+	f.finish(t, admin)
+	anonymous := f.finish(t, "")
+	watching := f.stream(t, server, admin, nil)
+	frame := watching.next(t)
+	if !strings.Contains(frame, "Anonymous") {
+		t.Fatal("anonymous finisher missing")
+	}
+	if w := f.post(t, "/signup", anonymous, map[string]string{"username": "carol", "password": password}); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "window.location") {
+		t.Fatalf("sign-up: %d %s", w.Code, w.Body)
+	}
+	for strings.Contains(frame, "Anonymous") || !strings.Contains(frame, "carol") {
+		frame = watching.next(t)
+	}
+}
+
+func TestLoggingInMovesTheAnonymousFinishOntoAnotherViewersLeaderboard(t *testing.T) {
+	f := newFixture(t)
+	server := f.server(t)
+	admin := f.account(t, "/setup", "Admin", map[string]string{"setupToken": f.setupToken})
+	f.finish(t, admin)
+	f.account(t, "/signup", "bob", map[string]string{}) // bob has not played today
+	anonymous := f.finish(t, "")
+	watching := f.stream(t, server, admin, nil)
+	frame := watching.next(t)
+	if !strings.Contains(frame, "Anonymous") || strings.Contains(frame, "bob") {
+		t.Fatal("leaderboard before log-in")
+	}
+	if w := f.post(t, "/login", anonymous, map[string]string{"username": "bob", "password": password}); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "window.location") {
+		t.Fatalf("log-in: %d %s", w.Code, w.Body)
+	}
+	for strings.Contains(frame, "Anonymous") || !strings.Contains(frame, "bob") {
 		frame = watching.next(t)
 	}
 }

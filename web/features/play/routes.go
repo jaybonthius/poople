@@ -20,13 +20,19 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
+// newPlayersPerMinute bounds the players one client address may create, since
+// each first guess stores a player and a year-long session.
+const newPlayersPerMinute = 10
+
 type handlers struct {
-	users  *identity.Service
-	games  *game.Service
-	maxFPS int
+	users      *identity.Service
+	games      *game.Service
+	maxFPS     int
+	newPlayers *httprate.RateLimiter
 }
 
 // shownSignals are the page signals a request carries: the guess being typed
@@ -40,7 +46,7 @@ type shownSignals struct {
 // Routes registers the page, its live view stream and the guess command.
 // It expects CrossOriginProtection, a body limit and identity.WithPlayer upstream.
 func Routes(ctx context.Context, router chi.Router, users *identity.Service, games *game.Service, maxFPS int) {
-	h := &handlers{users: users, games: games, maxFPS: maxFPS}
+	h := &handlers{users: users, games: games, maxFPS: maxFPS, newPlayers: httprate.NewRateLimiter(newPlayersPerMinute, time.Minute)}
 	router.Handle("/play/static/*", static.Handler("/play/static", StaticDirectory, "play"))
 	router.Get("/", h.page)
 	router.Get("/play/state", func(w http.ResponseWriter, r *http.Request) { h.state(ctx, w, r) })
@@ -65,9 +71,10 @@ func (h *handlers) page(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// state streams View. Each frame takes today's puzzle topic, the player's topic
-// and a timer for the next 08:00 UTC before reading SQLite, so no commit or
-// rollover between the read and the wait is missed.
+// state streams View. Each frame takes today's puzzle topic, the player's topic,
+// account changes (names and pictures on the leaderboard) and a timer for the
+// next 08:00 UTC before reading SQLite, so no commit or rollover between the
+// read and the wait is missed.
 func (h *handlers) state(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	var shown shownSignals
 	_ = datastar.ReadSignals(r, &shown) // a stream without signals shows nothing yet
@@ -120,7 +127,7 @@ func (h *handlers) read(ctx context.Context, viewer *identity.Viewer) (playView,
 		return v, nil, err
 	}
 	var playerID int64
-	changed := []<-chan struct{}{h.games.PuzzleChanges(puzzle.ID)}
+	changed := []<-chan struct{}{h.games.PuzzleChanges(puzzle.ID), h.users.AccountChanges()}
 	if viewer != nil {
 		playerID = viewer.PlayerID
 		v.SignedIn = viewer.Account != nil
@@ -134,7 +141,7 @@ func (h *handlers) read(ctx context.Context, viewer *identity.Viewer) (playView,
 			return v, nil, err
 		}
 	}
-	v.NextIn = time.Until(ladder.DailyOpens(puzzle.Number + 1))
+	v.NextIn = ladder.DailyOpens(puzzle.Number + 1).Sub(h.games.Now())
 	return v, changed, nil
 }
 
@@ -154,6 +161,10 @@ func (h *handlers) guess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	newPlayer := identity.ViewerFrom(r.Context()) == nil
+	if newPlayer && h.newPlayers.OnLimit(w, r, core.ClientKey(r)) {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
 	playerID, err := h.users.EnsurePlayer(w, r)
 	if err != nil {
 		h.fail(w, r, "create player", err)
@@ -178,7 +189,9 @@ func (h *handlers) guess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := strconv.FormatInt(time.Now().UnixNano(), 36)
-	if err := datastar.NewSSE(w, r).PatchSignals([]byte(`{"_playerSession":"` + session + `"}`)); err != nil {
+	// NewSSE sets no-cache; restore no-store before its first header flush.
+	sse := datastar.NewSSE(w, r, func(_ *datastar.ServerSentEventGenerator) { w.Header().Set("Cache-Control", "no-store") })
+	if err := sse.PatchSignals([]byte(`{"_playerSession":"` + session + `"}`)); err != nil {
 		errorlog.Request(r, "reopen stream after first guess", err)
 	}
 }

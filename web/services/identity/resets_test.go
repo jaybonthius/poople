@@ -12,8 +12,8 @@ import (
 func TestPasswordResetLinkIsAdminOnlySingleUseAndExpiring(t *testing.T) {
 	t.Parallel()
 	db := openStore(t, t.TempDir())
-	merged := 0
-	users := openIdentity(t, db, func(*sqlite.Conn, int64, int64) error { merged++; return nil })
+	merged, committed := 0, 0
+	users := openIdentity(t, db, func(*sqlite.Conn, int64, int64) (func(), error) { merged++; return func() { committed++ }, nil })
 	admin, _ := createAdmin(t, users)
 	mira, miraSession, err := users.SignUp(t.Context(), "", "mira", fixturePassword)
 	if err != nil {
@@ -48,8 +48,8 @@ func TestPasswordResetLinkIsAdminOnlySingleUseAndExpiring(t *testing.T) {
 	if v := viewer(t, users, session.Token); v.Account == nil || v.Account.ID != mira.ID || v.PlayerID == anonymous {
 		t.Fatal("reset did not sign the browser in")
 	}
-	if merged != 1 {
-		t.Fatalf("reset merged %d anonymous players", merged)
+	if merged != 1 || committed != 1 {
+		t.Fatalf("reset merged %d anonymous players and ran %d commit hooks", merged, committed)
 	}
 	for _, old := range []string{miraSession.Token, browser} {
 		if _, err := users.ViewerForSession(t.Context(), old); !errors.Is(err, identity.ErrInvalidSession) {

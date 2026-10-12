@@ -25,14 +25,14 @@ type fixture struct {
 	users      *identity.Service // a second service on the same storage, for admin-only steps
 }
 
-func newFixture(t *testing.T) fixture {
+func newFixture(t *testing.T, options ...web.Option) fixture {
 	t.Helper()
 	backend, err := app.Open(t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { backend.Close() })
-	handler, token, err := web.NewApp(t.Context(), backend, false, 30)
+	handler, token, err := web.NewApp(t.Context(), backend, false, 30, options...)
 	if err != nil || token == "" {
 		t.Fatalf("new app token=%q err=%v", token, err)
 	}
@@ -55,8 +55,20 @@ func (f fixture) get(path, session string) *httptest.ResponseRecorder {
 }
 
 func (f fixture) post(path, session string, signals map[string]string) *httptest.ResponseRecorder {
+	return f.postFrom("", nil, path, session, signals)
+}
+
+// postFrom posts from the client at peer ("" for httptest's default address)
+// with extra request headers.
+func (f fixture) postFrom(peer string, headers map[string]string, path, session string, signals map[string]string) *httptest.ResponseRecorder {
 	body, _ := json.Marshal(signals)
 	r := httptest.NewRequest("POST", path, bytes.NewReader(body))
+	if peer != "" {
+		r.RemoteAddr = peer
+	}
+	for name, value := range headers {
+		r.Header.Set(name, value)
+	}
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Datastar-Request", "true")
 	r.Header.Set("Sec-Fetch-Site", "same-origin")
@@ -157,18 +169,50 @@ func TestSetupSignUpLogInAndLogOut(t *testing.T) {
 	}
 }
 
-func TestLoginIsRateLimitedPerUsername(t *testing.T) {
+func TestLoginIsRateLimitedPerClientSoNobodyCanLockOutAnAccount(t *testing.T) {
 	f := newFixture(t)
-	for range 5 {
-		if w := f.post("/login", "", map[string]string{"username": "mira", "password": "wrong password"}); !refused(w, "Invalid username or password.") {
+	const attacker, owner = "203.0.113.7:4000", "198.51.100.2:5000"
+	f.postFrom(owner, nil, "/setup", "", map[string]string{"setupToken": f.setupToken, "username": "Admin", "password": password})
+	// Varying usernames does not escape the limit: each attempt costs a hash.
+	for i := range 5 {
+		if w := f.postFrom(attacker, nil, "/login", "", map[string]string{"username": "user" + strconv.Itoa(i), "password": "wrong password"}); !refused(w, "Invalid username or password.") {
 			t.Fatal(w.Body.String())
 		}
 	}
-	if w := f.post("/login", "", map[string]string{"username": "MIRA", "password": password}); !refused(w, "Too many attempts.") {
-		t.Fatalf("sixth attempt: %s", w.Body)
+	for _, username := range []string{"another", "admin"} {
+		if w := f.postFrom(attacker, nil, "/login", "", map[string]string{"username": username, "password": "wrong password"}); !refused(w, "Too many attempts.") {
+			t.Fatalf("sixth attempt as %s: %s", username, w.Body)
+		}
 	}
-	if w := f.post("/login", "", map[string]string{"username": "other", "password": password}); !refused(w, "Invalid username or password.") {
-		t.Fatalf("other username limited: %s", w.Body)
+	// The attacker's failures on "admin" do not lock its owner out.
+	if w := f.postFrom(owner, nil, "/login", "", map[string]string{"username": "admin", "password": password}); !redirected(w, "/") {
+		t.Fatalf("owner locked out: %s", w.Body)
+	}
+}
+
+func TestTrustedProxyKeysRateLimitsByForwardedClient(t *testing.T) {
+	const proxy = "127.0.0.1:9000"
+	attempt := func(f fixture, client string) *httptest.ResponseRecorder {
+		// A client-supplied entry comes first; the proxy appends the real client last.
+		return f.postFrom(proxy, map[string]string{"X-Forwarded-For": "192.0.2.99, " + client}, "/login", "",
+			map[string]string{"username": "nobody", "password": "wrong password"})
+	}
+	direct := newFixture(t)
+	for i := range 5 {
+		attempt(direct, "198.51.100."+strconv.Itoa(i))
+	}
+	if w := attempt(direct, "198.51.100.99"); !refused(w, "Too many attempts.") {
+		t.Fatalf("without --trusted-proxy, X-Forwarded-For chose the rate-limit key: %s", w.Body)
+	}
+	proxied := newFixture(t, web.WithTrustedProxy())
+	for range 5 {
+		attempt(proxied, "198.51.100.1")
+	}
+	if w := attempt(proxied, "198.51.100.1"); !refused(w, "Too many attempts.") {
+		t.Fatalf("forwarded client not limited: %s", w.Body)
+	}
+	if w := attempt(proxied, "198.51.100.2"); !refused(w, "Invalid username or password.") {
+		t.Fatalf("another forwarded client shares the proxy's limit: %s", w.Body)
 	}
 }
 

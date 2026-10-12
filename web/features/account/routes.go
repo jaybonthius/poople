@@ -97,6 +97,8 @@ func (h *handlers) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, identity.ErrAvatarTooLarge):
 		patchSignals(w, r, map[string]string{"_avatarError": "Picture must be 2 MB or smaller."})
+	case errors.Is(err, identity.ErrAvatarDimensions):
+		patchSignals(w, r, map[string]string{"_avatarError": "Picture is too big. Use one under 16 megapixels."})
 	case errors.Is(err, identity.ErrAvatarInvalid):
 		patchSignals(w, r, map[string]string{"_avatarError": "Picture must be a PNG, JPEG, GIF or WebP image."})
 	case errors.Is(err, errNoAvatar):
@@ -199,6 +201,8 @@ func (h *handlers) changePassword(w http.ResponseWriter, r *http.Request) {
 		passwordError(w, r, "Current password is incorrect.")
 	case errors.Is(err, identity.ErrPasswordInvalid):
 		passwordError(w, r, "New password must be 10–128 characters.")
+	case errors.Is(err, identity.ErrPasswordBusy):
+		passwordError(w, r, "Poople is busy. Try again in a moment.")
 	case errors.Is(err, identity.ErrInvalidSession):
 		navigate(w, r, "/login")
 	default:

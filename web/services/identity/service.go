@@ -28,12 +28,15 @@ var (
 	ErrAlreadySignedUp    = errors.New("this player already has an account")
 	ErrAdminRequired      = errors.New("admin access required")
 	ErrAccountNotFound    = errors.New("account not found")
+	// ErrPasswordBusy refuses a password check while every hashing slot is taken.
+	ErrPasswordBusy = errors.New("too many password checks in progress")
 )
 
 // MergePlayers moves fromPlayerID's games to toPlayerID inside the log-in
 // transaction, keeping toPlayerID's game wherever both played a puzzle.
-// Returning an error rolls back the whole log-in.
-type MergePlayers func(conn *sqlite.Conn, fromPlayerID, toPlayerID int64) error
+// Returning an error rolls back the whole log-in; otherwise identity calls
+// committed after the commit to wake the views the merge changed.
+type MergePlayers func(conn *sqlite.Conn, fromPlayerID, toPlayerID int64) (committed func(), err error)
 
 // Viewer is who sent a request: a player with a live session, and their account if they signed up.
 type Viewer struct {
@@ -208,27 +211,27 @@ func createPlayer(conn *sqlite.Conn, session Session) (int64, error) {
 	return playerID, insertSession(conn, playerID, session)
 }
 
-// SignUp attaches a new account to the browser's player, keeping its session and
-// history. Without a live session it creates a player and returns its new session;
-// otherwise the returned session is nil.
-func (s *Service) SignUp(ctx context.Context, browserToken, username, password string) (*Account, *Session, error) {
+// SignUp attaches a new account to the browser's player, keeping its history,
+// or to a new player without a live session. Either way it revokes the player's
+// sessions and returns a fresh one, so a cookie planted before sign-up never
+// becomes the account's session.
+func (s *Service) SignUp(ctx context.Context, browserToken, username, password string) (*Account, Session, error) {
 	normalized, valid := normalizeUsername(username)
 	if !valid {
-		return nil, nil, ErrUsernameInvalid
+		return nil, Session{}, ErrUsernameInvalid
 	}
 	if err := validatePassword(password); err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	passwordHash, err := hashPassword(password)
 	if err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	fresh, err := newSession()
 	if err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	var account *Account
-	var issued *Session
 	if err := s.db.Write(ctx, func(conn *sqlite.Conn) error {
 		count, err := zz.OnceCountAccounts(conn)
 		if err != nil {
@@ -237,43 +240,46 @@ func (s *Service) SignUp(ctx context.Context, browserToken, username, password s
 		if count == 0 {
 			return ErrSetupRequired
 		}
-		account, issued, err = createAccount(conn, browserToken, fresh, normalized, passwordHash, false)
+		account, err = createAccount(conn, browserToken, fresh, normalized, passwordHash, false)
 		return err
 	}); err != nil {
-		return nil, nil, err
+		return nil, Session{}, err
 	}
 	s.notifyAccounts()
-	return account, issued, nil
+	return account, fresh, nil
 }
 
 // createAccount runs inside Write. It attaches the account to the browser's
-// player or, without a live session, to a new player with the fresh session.
-func createAccount(conn *sqlite.Conn, browserToken string, fresh Session, username, passwordHash string, admin bool) (*Account, *Session, error) {
+// player or, without a live session, to a new player, and makes fresh that
+// player's only session.
+func createAccount(conn *sqlite.Conn, browserToken string, fresh Session, username, passwordHash string, admin bool) (*Account, error) {
 	taken, err := accountByUsername(conn, username)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if taken != nil {
-		return nil, nil, ErrUsernameTaken
+		return nil, ErrUsernameTaken
 	}
-	var issued *Session
 	playerID, err := sessionPlayer(conn, browserToken)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if playerID != 0 {
 		existing, err := accountForPlayer(conn, playerID)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if existing != nil {
-			return nil, nil, ErrAlreadySignedUp
+			return nil, ErrAlreadySignedUp
 		}
-	} else {
-		if playerID, err = createPlayer(conn, fresh); err != nil {
-			return nil, nil, err
+		if err := zz.OnceDeletePlayerSessions(conn, playerID); err != nil {
+			return nil, err
 		}
-		issued = &fresh
+		if err := insertSession(conn, playerID, fresh); err != nil {
+			return nil, err
+		}
+	} else if playerID, err = createPlayer(conn, fresh); err != nil {
+		return nil, err
 	}
 	isAdmin := int64(0)
 	if admin {
@@ -284,9 +290,9 @@ func createAccount(conn *sqlite.Conn, browserToken string, fresh Session, userna
 		IsAdmin: isAdmin, CreatedAt: time.Now().UnixMilli(),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return &Account{ID: id, Username: username, IsAdmin: admin}, issued, nil
+	return &Account{ID: id, Username: username, IsAdmin: admin}, nil
 }
 
 // Login verifies the password, then in one transaction moves the browser's
@@ -309,7 +315,11 @@ func (s *Service) Login(ctx context.Context, browserToken, username, password st
 		hash = row.PasswordHash
 	}
 	// Hash even for unknown usernames so timing does not reveal which exist.
-	if !passwordMatches(password, hash) || row == nil {
+	matches, err := passwordMatches(password, hash)
+	if err != nil {
+		return nil, Session{}, err
+	}
+	if !matches || row == nil {
 		return nil, Session{}, ErrInvalidCredentials
 	}
 	session, err := newSession()
@@ -317,6 +327,7 @@ func (s *Service) Login(ctx context.Context, browserToken, username, password st
 		return nil, Session{}, err
 	}
 	var account *Account
+	var merged func()
 	if err := s.db.Write(ctx, func(conn *sqlite.Conn) error {
 		current, err := accountByID(conn, row.ID)
 		if err != nil {
@@ -326,7 +337,7 @@ func (s *Service) Login(ctx context.Context, browserToken, username, password st
 		if current == nil || current.PasswordHash != row.PasswordHash {
 			return ErrInvalidCredentials
 		}
-		if err := s.signIn(conn, browserToken, current.PlayerID, session); err != nil {
+		if merged, err = s.signIn(conn, browserToken, current.PlayerID, session); err != nil {
 			return err
 		}
 		account = current.account()
@@ -337,42 +348,51 @@ func (s *Service) Login(ctx context.Context, browserToken, username, password st
 		}
 		return nil, Session{}, fmt.Errorf("log in: %w", err)
 	}
+	merged()
+	// Wake views so the browser's revoked session stops streaming.
+	s.notifyAccounts()
 	return account, session, nil
 }
 
 // signIn runs inside Write. It revokes the browser's session; when that session
 // belonged to another, anonymous player it merges that player's games into
-// playerID and retires it. Then it issues session for playerID.
-func (s *Service) signIn(conn *sqlite.Conn, browserToken string, playerID int64, session Session) error {
+// playerID and retires it. Then it issues session for playerID. Call the
+// returned function after commit to wake the views a merge changed.
+func (s *Service) signIn(conn *sqlite.Conn, browserToken string, playerID int64, session Session) (func(), error) {
+	merged := func() {}
 	if err := zz.OnceDeleteExpiredSessions(conn, time.Now().UnixMilli()); err != nil {
-		return err
+		return nil, err
 	}
 	from, err := sessionPlayer(conn, browserToken)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if from != 0 {
 		if err := zz.OnceDeleteSession(conn, tokenHash(browserToken)); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if from != 0 && from != playerID {
 		owner, err := accountForPlayer(conn, from)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if owner == nil {
 			if s.merge != nil {
-				if err := s.merge(conn, from, playerID); err != nil {
-					return fmt.Errorf("merge games: %w", err)
+				committed, err := s.merge(conn, from, playerID)
+				if err != nil {
+					return nil, fmt.Errorf("merge games: %w", err)
+				}
+				if committed != nil {
+					merged = committed
 				}
 			}
 			if err := zz.OnceDeletePlayerSessions(conn, from); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return insertSession(conn, playerID, session)
+	return merged, insertSession(conn, playerID, session)
 }
 
 // Logout revokes the session; the caller clears the cookie.

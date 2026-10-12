@@ -83,6 +83,16 @@ WHERE id = @game_id;
 UPDATE games SET last_rejection = CAST(@rejection AS TEXT), rejection_seq = rejection_seq + 1
 WHERE id = @game_id;
 
+-- name: PlayerPuzzles :many
+SELECT puzzle_id AS played_puzzle_id FROM games WHERE player_id = @player_id;
+
+-- name: DeleteUnstartedGamesOverlapping :exec
+-- Deletes to's games without an accepted guess on puzzles from also played, so
+-- from's game moves in instead of being dropped as a duplicate.
+DELETE FROM games
+WHERE games.player_id = @to_player AND games.started_at IS NULL
+  AND games.puzzle_id IN (SELECT other.puzzle_id FROM games other WHERE other.player_id = @from_player);
+
 -- name: MoveGames :exec
 -- Moves from's games to the other player, except puzzles that player already has.
 UPDATE games SET player_id = @to_player

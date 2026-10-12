@@ -308,6 +308,9 @@ func TestMergePlayersKeepsTheAccountsGames(t *testing.T) {
 	yesterday := f.daily(t)
 	yesterdayPath, _ := data.ShortestPath(yesterday.StartWord)
 	f.guess(t, anonymous, yesterday.ID, yesterdayPath[1], "")
+	// The account only had a guess rejected: it has a game row but no ladder,
+	// which must not displace the anonymous player's progress.
+	f.guess(t, account, yesterday.ID, "zzzz", game.NotInList)
 	f.clock.Set(day423.Add(24 * time.Hour))
 	today := f.daily(t)
 	todayPath, _ := data.ShortestPath(today.StartWord)
@@ -315,13 +318,35 @@ func TestMergePlayersKeepsTheAccountsGames(t *testing.T) {
 	f.guess(t, anonymous, today.ID, todayPath[2], "")
 	f.guess(t, account, today.ID, todayPath[1], "")
 
-	if err := f.backend.Database().Write(t.Context(), func(conn *sqlite.Conn) error {
-		if err := game.MergePlayers(conn, anonymous, account); err != nil {
+	waits := map[string]<-chan struct{}{
+		"yesterday's puzzle": f.games.PuzzleChanges(yesterday.ID),
+		"today's puzzle":     f.games.PuzzleChanges(today.ID),
+		"the account":        f.games.PlayerChanges(account),
+		"the anonymous":      f.games.PlayerChanges(anonymous),
+	}
+	var committed func()
+	if err := f.backend.Database().Write(t.Context(), func(conn *sqlite.Conn) (err error) {
+		if committed, err = f.games.MergePlayers(conn, anonymous, account); err != nil {
 			return err
 		}
 		return sqlitex.Execute(conn, "DELETE FROM players WHERE id = ?", &sqlitex.ExecOptions{Args: []any{anonymous}})
 	}); err != nil {
 		t.Fatal(err)
+	}
+	for name, wait := range waits {
+		select {
+		case <-wait:
+			t.Fatalf("%s woke before the commit hook ran", name)
+		default:
+		}
+	}
+	committed()
+	for name, wait := range waits {
+		select {
+		case <-wait:
+		default:
+			t.Fatalf("merge did not wake views of %s", name)
+		}
 	}
 	if view := f.view(t, account, yesterday.ID); !slices.Equal(view.Ladder, yesterdayPath[:2]) {
 		t.Fatalf("moved game ladder = %v", view.Ladder)
@@ -331,6 +356,9 @@ func TestMergePlayersKeepsTheAccountsGames(t *testing.T) {
 	}
 	if got := f.count(t, "SELECT count(*) FROM games WHERE player_id = ?", anonymous); got != 0 {
 		t.Fatalf("anonymous games left = %d", got)
+	}
+	if got := f.count(t, "SELECT count(*) FROM games WHERE player_id = ?", account); got != 2 {
+		t.Fatalf("account games = %d, want 2", got)
 	}
 	if got := f.count(t, "SELECT count(*) FROM guesses"); got != 2 {
 		t.Fatalf("guesses = %d, want the duplicate game's guesses dropped", got)

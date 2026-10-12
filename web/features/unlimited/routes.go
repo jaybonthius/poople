@@ -20,13 +20,19 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/httprate"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
+// newPuzzlesPerMinute bounds the puzzles one client address may start, since
+// each stores a puzzle row.
+const newPuzzlesPerMinute = 20
+
 type handlers struct {
-	users  *identity.Service
-	games  *game.Service
-	maxFPS int
+	users      *identity.Service
+	games      *game.Service
+	maxFPS     int
+	newPuzzles *httprate.RateLimiter
 }
 
 // shownSignals are the page signals a request carries: the guess being typed
@@ -41,7 +47,7 @@ type shownSignals struct {
 // guess commands. It expects CrossOriginProtection, a body limit and
 // identity.WithPlayer upstream.
 func Routes(ctx context.Context, router chi.Router, users *identity.Service, games *game.Service, maxFPS int) {
-	h := &handlers{users: users, games: games, maxFPS: maxFPS}
+	h := &handlers{users: users, games: games, maxFPS: maxFPS, newPuzzles: httprate.NewRateLimiter(newPuzzlesPerMinute, time.Minute)}
 	router.Handle("/unlimited/static/*", static.Handler("/unlimited/static", StaticDirectory, "unlimited"))
 	router.Get("/unlimited", h.page)
 	router.Get("/unlimited/state", func(w http.ResponseWriter, r *http.Request) { h.state(ctx, w, r) })
@@ -125,6 +131,10 @@ func (h *handlers) read(ctx context.Context, viewer *identity.Viewer) (unlimited
 // command creates its player; the response then patches _playerSession so the
 // page reopens its stream with the new cookie.
 func (h *handlers) newPuzzle(w http.ResponseWriter, r *http.Request) {
+	if h.newPuzzles.OnLimit(w, r, core.ClientKey(r)) {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
 	newPlayer := identity.ViewerFrom(r.Context()) == nil
 	playerID, err := h.users.EnsurePlayer(w, r)
 	if err != nil {
@@ -140,7 +150,9 @@ func (h *handlers) newPuzzle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := strconv.FormatInt(time.Now().UnixNano(), 36)
-	if err := datastar.NewSSE(w, r).PatchSignals([]byte(`{"_playerSession":"` + session + `"}`)); err != nil {
+	// NewSSE sets no-cache; restore no-store before its first header flush.
+	sse := datastar.NewSSE(w, r, func(_ *datastar.ServerSentEventGenerator) { w.Header().Set("Cache-Control", "no-store") })
+	if err := sse.PatchSignals([]byte(`{"_playerSession":"` + session + `"}`)); err != nil {
 		errorlog.Request(r, "reopen stream after first puzzle", err)
 	}
 }

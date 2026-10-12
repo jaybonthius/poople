@@ -61,7 +61,14 @@ func (s *Service) ChangePassword(ctx context.Context, sessionToken, current, nex
 		return ErrInvalidSession
 	}
 	// Bound the input before Argon2 sees it.
-	if len(current) > PasswordMaxLength*utf8.UTFMax || !passwordMatches(current, row.PasswordHash) {
+	if len(current) > PasswordMaxLength*utf8.UTFMax {
+		return ErrInvalidCredentials
+	}
+	matches, err := passwordMatches(current, row.PasswordHash)
+	if err != nil {
+		return err
+	}
+	if !matches {
 		return ErrInvalidCredentials
 	}
 	if err := validatePassword(next); err != nil {

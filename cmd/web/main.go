@@ -34,6 +34,7 @@ func run(ctx context.Context, args []string, operator io.Writer) (err error) {
 	listen := flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
 	secure := flags.Bool("secure-cookie", false, "require HTTPS for session cookies (including behind a proxy)")
 	uiFPS := flags.Int("ui-fps", 30, "maximum state-driven UI renders per second")
+	trustedProxy := flags.Bool("trusted-proxy", false, "take client addresses for rate limits from the last X-Forwarded-For entry (only behind exactly one reverse proxy)")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -65,7 +66,11 @@ func run(ctx context.Context, args []string, operator io.Writer) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, backend.Close()) }()
-	handler, token, err := web.NewApp(ctx, backend, *secure, *uiFPS)
+	var options []web.Option
+	if *trustedProxy {
+		options = append(options, web.WithTrustedProxy())
+	}
+	handler, token, err := web.NewApp(ctx, backend, *secure, *uiFPS, options...)
 	if err != nil {
 		return err
 	}

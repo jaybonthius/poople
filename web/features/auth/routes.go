@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"mime"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -130,19 +129,23 @@ func (h *handlers) login(w http.ResponseWriter, r *http.Request) {
 		patchError(w, r, "Invalid request. Try again.")
 		return
 	}
-	username := strings.ToLower(strings.TrimSpace(signals.Username))
-	// Bound limiter keys before allocating counters; identity owns credential rules.
+	username := strings.TrimSpace(signals.Username)
+	// Bound the input before Argon2 sees it; identity owns credential rules.
 	if len(username) == 0 || len(username) > 64 || !utf8.ValidString(username) || len(signals.Password) > 512 || !utf8.ValidString(signals.Password) {
 		patchError(w, r, "Invalid username or password.")
 		return
 	}
-	if h.limiter.OnLimit(w, r, "login:"+username) {
-		patchError(w, r, "Too many attempts. Wait one minute and try again.")
+	// Limit by client, not username, so nobody can lock another player out.
+	if h.peerLimited(w, r, "login") {
 		return
 	}
 	_, session, err := h.users.Login(r.Context(), identity.SessionToken(r), username, signals.Password)
 	if errors.Is(err, identity.ErrInvalidCredentials) {
 		patchError(w, r, "Invalid username or password.")
+		return
+	}
+	if errors.Is(err, identity.ErrPasswordBusy) {
+		patchError(w, r, busyMessage)
 		return
 	}
 	if err != nil {
@@ -172,9 +175,7 @@ func (h *handlers) signUp(w http.ResponseWriter, r *http.Request) {
 		h.accountError(w, r, "sign up", err)
 		return
 	}
-	if session != nil {
-		h.users.Cookies().Set(w, *session)
-	}
+	h.users.Cookies().Set(w, session)
 	navigate(w, r, "/")
 }
 
@@ -196,9 +197,7 @@ func (h *handlers) completeSetup(w http.ResponseWriter, r *http.Request) {
 		h.accountError(w, r, "create admin account", err)
 		return
 	}
-	if session != nil {
-		h.users.Cookies().Set(w, *session)
-	}
+	h.users.Cookies().Set(w, session)
 	navigate(w, r, "/")
 }
 
@@ -231,6 +230,8 @@ func (h *handlers) accountError(w http.ResponseWriter, r *http.Request, operatio
 		patchError(w, r, "That username is taken. Try another.")
 	case errors.Is(err, identity.ErrSetupRequired):
 		patchError(w, r, "Sign-up opens once the admin has set up Poople.")
+	case errors.Is(err, identity.ErrPasswordBusy):
+		patchError(w, r, busyMessage)
 	case errors.Is(err, identity.ErrAlreadySignedUp):
 		patchError(w, r, "This device already has an account. Log in instead.")
 	case errors.Is(err, identity.ErrUsernameInvalid), errors.Is(err, identity.ErrPasswordInvalid):
@@ -242,14 +243,13 @@ func (h *handlers) accountError(w http.ResponseWriter, r *http.Request, operatio
 	}
 }
 
-// peerLimited bounds account creation and reset attempts per client address,
-// even when attackers vary usernames or tokens.
+// busyMessage answers a password check refused because every hashing slot is taken.
+const busyMessage = "Poople is busy. Try again in a moment."
+
+// peerLimited bounds log-in, account creation and reset attempts per client
+// address, even when attackers vary usernames or tokens.
 func (h *handlers) peerLimited(w http.ResponseWriter, r *http.Request, action string) bool {
-	peer, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		peer = r.RemoteAddr
-	}
-	if h.limiter.OnLimit(w, r, action+":"+peer) {
+	if h.limiter.OnLimit(w, r, action+":"+core.ClientKey(r)) {
 		patchError(w, r, "Too many attempts. Wait one minute and try again.")
 		return true
 	}

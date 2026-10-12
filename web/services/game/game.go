@@ -346,22 +346,39 @@ func (s *Service) GameView(ctx context.Context, playerID, puzzleID int64) (Game,
 	return view, err
 }
 
-// MergePlayers moves from's games to the player to, except puzzles to already
-// has, whose duplicates are deleted. Run it in the login Write, then notify
-// the to player's topic after commit.
-func MergePlayers(conn *sqlite.Conn, from, to int64) error {
+// MergePlayers moves from's games to the player to inside the caller's
+// transaction (identity's log-in Write). Where both played a puzzle, to keeps
+// its game unless that game has no accepted guess; from's duplicates are
+// deleted. Call the returned function after commit: it wakes views of both
+// players and of every puzzle from played.
+func (s *Service) MergePlayers(conn *sqlite.Conn, from, to int64) (func(), error) {
 	if from == to {
-		return nil
+		return func() {}, nil
+	}
+	puzzles, err := zz.OncePlayerPuzzles(conn, from)
+	if err != nil {
+		return nil, err
+	}
+	if err := zz.OnceDeleteUnstartedGamesOverlapping(conn, zz.DeleteUnstartedGamesOverlappingParams{ToPlayer: to, FromPlayer: from}); err != nil {
+		return nil, err
 	}
 	if err := zz.OnceMoveGames(conn, zz.MoveGamesParams{ToPlayer: to, FromPlayer: from}); err != nil {
-		return err
+		return nil, err
 	}
-	return zz.OnceDeletePlayerGames(conn, from)
+	if err := zz.OnceDeletePlayerGames(conn, from); err != nil {
+		return nil, err
+	}
+	return func() {
+		for _, puzzleID := range puzzles {
+			s.puzzles.Notify(puzzleID)
+		}
+		s.players.Notify(from)
+		s.players.Notify(to)
+	}, nil
 }
 
-// NotifyPlayer wakes views of the player's games after a commit made outside
-// this service, such as MergePlayers.
-func (s *Service) NotifyPlayer(playerID int64) { s.players.Notify(playerID) }
+// Now is the service's clock, which decides the daily puzzle.
+func (s *Service) Now() time.Time { return s.now() }
 
 func currentList(conn *sqlite.Conn) (int64, error) {
 	listID, err := zz.OnceCurrentWordList(conn)
