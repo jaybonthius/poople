@@ -52,25 +52,25 @@ func Shell(title string, viewer *Viewer, styles ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " · Poople</title><link rel=\"preload\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " · Poople</title><link rel=\"icon\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 templ.SafeURL
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "fonts/fredoka-latin.woff2"))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "favicon.svg"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 23, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 23, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\"><link rel=\"preload\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" type=\"image/svg+xml\"><link rel=\"preload\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 templ.SafeURL
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "fonts/figtree-latin.woff2"))
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "fonts/fredoka-latin.woff2"))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 24, Col: 78}
 		}
@@ -78,7 +78,20 @@ func Shell(title string, viewer *Viewer, styles ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\"><link rel=\"preload\" href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 templ.SafeURL
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "fonts/figtree-latin.woff2"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 25, Col: 78}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -86,38 +99,38 @@ func Shell(title string, viewer *Viewer, styles ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<link rel=\"stylesheet\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<link rel=\"stylesheet\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var5 templ.SafeURL
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "styles/app.css"))
+		var templ_7745c5c3_Var6 templ.SafeURL
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(static.Path("core", "styles/app.css"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 26, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 27, Col: 70}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, style := range styles {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<link rel=\"stylesheet\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<link rel=\"stylesheet\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var6 templ.SafeURL
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(style))
+			var templ_7745c5c3_Var7 templ.SafeURL
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(style))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 28, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 29, Col: 54}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -126,25 +139,25 @@ func Shell(title string, viewer *Viewer, styles ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<script type=\"module\" src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<script type=\"module\" src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(static.Path("core", "datastar-rocket-1.0.4.js"))
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(static.Path("core", "datastar-rocket-1.0.4.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 31, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 32, Col: 78}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"></script></head><body>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"></script></head><body>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if Development {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div data-init=\"@get('/reload', {retry: 'always', retryMaxCount: Infinity, retryInterval:20, retryMaxWaitMs:200})\"></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div data-init=\"@get('/reload', {retry: 'always', retryMaxCount: Infinity, retryInterval:20, retryMaxWaitMs:200})\"></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -153,7 +166,7 @@ func Shell(title string, viewer *Viewer, styles ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<a class=\"skip-link\" href=\"#main\">Skip to content</a><div class=\"app\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<a class=\"skip-link\" href=\"#main\">Skip to content</a><div class=\"app\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -165,7 +178,7 @@ func Shell(title string, viewer *Viewer, styles ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><noscript><p class=\"page\">Enable JavaScript to play.</p></noscript></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><noscript><p class=\"page\">Enable JavaScript to play.</p></noscript></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -189,12 +202,12 @@ func masthead(title string, viewer *Viewer) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var8 == nil {
-			templ_7745c5c3_Var8 = templ.NopComponent
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<header class=\"masthead\"><a class=\"brand\" href=\"/\"><svg class=\"brand-mark\" aria-hidden=\"true\"><use href=\"#mascot\"></use></svg><span class=\"brand-name\">Poople</span></a><nav class=\"masthead-nav\" aria-label=\"Main\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<header class=\"masthead\"><a class=\"brand\" href=\"/\"><svg class=\"brand-mark\" aria-hidden=\"true\"><use href=\"#mascot\"></use></svg><span class=\"brand-name\">Poople</span></a><nav class=\"masthead-nav\" aria-label=\"Main\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -227,7 +240,7 @@ func masthead(title string, viewer *Viewer) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</nav></header>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</nav></header>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -253,79 +266,79 @@ func MastheadAccount(title string, viewer Viewer) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var9 == nil {
-			templ_7745c5c3_Var9 = templ.NopComponent
+		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var10 == nil {
+			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<a id=\"masthead-account\" class=\"nav-link\" href=\"/account\" aria-label=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("Your account, " + viewer.Username)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 70, Col: 106}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" aria-current=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<a id=\"masthead-account\" class=\"nav-link\" href=\"/account\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(currentPage(title == "Account"))
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("Your account, " + viewer.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 70, Col: 155}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 71, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" aria-current=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var12 string
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(currentPage(title == "Account"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 71, Col: 155}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if viewer.AvatarURL != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<img class=\"avatar\" src=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<img class=\"avatar\" src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(viewer.AvatarURL)
+			var templ_7745c5c3_Var13 string
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(viewer.AvatarURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 72, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 73, Col: 45}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" alt=\"\"> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" alt=\"\"> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-user\"></use></svg> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<svg class=\"icon\" aria-hidden=\"true\"><use href=\"#i-user\"></use></svg> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<span class=\"nav-label\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"nav-label\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(viewer.Username)
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(viewer.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 76, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 77, Col: 62}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -349,77 +362,77 @@ func navLink(href templ.SafeURL, name, label, icon string, current bool) templ.C
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var14 == nil {
-			templ_7745c5c3_Var14 = templ.NopComponent
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<a class=\"nav-link\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<a class=\"nav-link\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var15 templ.SafeURL
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(href)
+		var templ_7745c5c3_Var16 templ.SafeURL
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(href)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 81, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 82, Col: 32}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" aria-label=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 81, Col: 52}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" aria-current=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(currentPage(current))
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 81, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 82, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" aria-current=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + icon)
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(currentPage(current))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 81, Col: 152}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 82, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"></use></svg><span class=\"nav-label\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"><svg class=\"icon\" aria-hidden=\"true\"><use href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + icon)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 81, Col: 217}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 82, Col: 152}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\"></use></svg><span class=\"nav-label\" aria-hidden=\"true\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var20 string
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `core/shell.templ`, Line: 82, Col: 217}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</span></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -447,12 +460,12 @@ func iconSprite() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var20 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var20 == nil {
-			templ_7745c5c3_Var20 = templ.NopComponent
+		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var21 == nil {
+			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<svg hidden><symbol id=\"mascot\" viewBox=\"0 0 32 32\"><path d=\"M16.5 2.5c1.6 1.2 1.9 3 1 4.6 2.6.4 4.5 2.4 4.5 5 0 .4 0 .8-.2 1.2 2.6.6 4.5 2.6 4.5 5.1 0 .5-.1 1-.2 1.4 2.4.8 4 2.7 4 4.9 0 3.2-3.3 4.8-7.4 4.8H8.3C4.2 29.5 1 27.9 1 24.7c0-2.2 1.6-4.1 4-4.9-.1-.4-.2-.9-.2-1.4 0-2.5 1.9-4.5 4.5-5.1-.1-.4-.2-.8-.2-1.2 0-3 2.6-5.2 5.8-5.2.6-1.5.9-3 1.6-4.4z\" fill=\"#7a4726\"></path> <path d=\"M6 22.3c3 1.4 6.4 2 10 2s7-.6 10-2M9.3 15.6c2 .9 4.3 1.3 6.7 1.3s4.7-.4 6.7-1.3\" fill=\"none\" stroke=\"#59321a\" stroke-width=\"1.2\" stroke-linecap=\"round\"></path> <path d=\"M12 9.6c.8-.9 2-1.4 3.2-1.4\" fill=\"none\" stroke=\"#a8693c\" stroke-width=\"1.3\" stroke-linecap=\"round\"></path> <circle cx=\"12.3\" cy=\"19\" r=\"2.3\" fill=\"#fffdf6\"></circle> <circle cx=\"19.7\" cy=\"19\" r=\"2.3\" fill=\"#fffdf6\"></circle> <circle cx=\"12.7\" cy=\"19.3\" r=\"1.1\" fill=\"#18221d\"></circle> <circle cx=\"20.1\" cy=\"19.3\" r=\"1.1\" fill=\"#18221d\"></circle> <path d=\"M12.6 24.6c2 1.4 4.8 1.4 6.8 0\" fill=\"none\" stroke=\"#fffdf6\" stroke-width=\"1.5\" stroke-linecap=\"round\"></path></symbol> <symbol id=\"i-unlimited\" viewBox=\"0 0 24 24\"><path d=\"M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4Zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-podium\" viewBox=\"0 0 24 24\"><path d=\"M9 20V8h6v12M3 20v-7h6M15 20v-9h6v9M2 20h20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-stats\" viewBox=\"0 0 24 24\"><path d=\"M4 20V10M10 20V4M16 20v-8M22 20H2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" transform=\"translate(-1 0)\"></path></symbol> <symbol id=\"i-user\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"></circle><path d=\"M4 21c.8-4 4-6 8-6s7.2 2 8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"></path></symbol> <symbol id=\"i-admin\" viewBox=\"0 0 24 24\"><path d=\"M12 3 5 6v5c0 4.4 2.9 8 7 10 4.1-2 7-5.6 7-10V6l-7-3Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-close\" viewBox=\"0 0 24 24\"><path d=\"M6 6l12 12M18 6 6 18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"></path></symbol> <symbol id=\"i-backspace\" viewBox=\"0 0 24 24\"><path d=\"M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7 6-7Z M12 9l6 6M18 9l-6 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-share\" viewBox=\"0 0 24 24\"><path d=\"M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-alert\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"></circle><path d=\"M12 7.5v5.5M12 16.5v.01\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"></path></symbol></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<svg hidden><symbol id=\"mascot\" viewBox=\"0 0 32 32\"><path d=\"M16.5 2.5c1.6 1.2 1.9 3 1 4.6 2.6.4 4.5 2.4 4.5 5 0 .4 0 .8-.2 1.2 2.6.6 4.5 2.6 4.5 5.1 0 .5-.1 1-.2 1.4 2.4.8 4 2.7 4 4.9 0 3.2-3.3 4.8-7.4 4.8H8.3C4.2 29.5 1 27.9 1 24.7c0-2.2 1.6-4.1 4-4.9-.1-.4-.2-.9-.2-1.4 0-2.5 1.9-4.5 4.5-5.1-.1-.4-.2-.8-.2-1.2 0-3 2.6-5.2 5.8-5.2.6-1.5.9-3 1.6-4.4z\" fill=\"#7a4726\"></path> <path d=\"M6 22.3c3 1.4 6.4 2 10 2s7-.6 10-2M9.3 15.6c2 .9 4.3 1.3 6.7 1.3s4.7-.4 6.7-1.3\" fill=\"none\" stroke=\"#59321a\" stroke-width=\"1.2\" stroke-linecap=\"round\"></path> <path d=\"M12 9.6c.8-.9 2-1.4 3.2-1.4\" fill=\"none\" stroke=\"#a8693c\" stroke-width=\"1.3\" stroke-linecap=\"round\"></path> <circle cx=\"12.3\" cy=\"19\" r=\"2.3\" fill=\"#fffdf6\"></circle> <circle cx=\"19.7\" cy=\"19\" r=\"2.3\" fill=\"#fffdf6\"></circle> <circle cx=\"12.7\" cy=\"19.3\" r=\"1.1\" fill=\"#18221d\"></circle> <circle cx=\"20.1\" cy=\"19.3\" r=\"1.1\" fill=\"#18221d\"></circle> <path d=\"M12.6 24.6c2 1.4 4.8 1.4 6.8 0\" fill=\"none\" stroke=\"#fffdf6\" stroke-width=\"1.5\" stroke-linecap=\"round\"></path></symbol> <symbol id=\"i-unlimited\" viewBox=\"0 0 24 24\"><path d=\"M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4Zm0 0c2 2.7 3.6 4 5.5 4a4 4 0 0 0 0-8c-1.9 0-3.5 1.3-5.5 4Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-podium\" viewBox=\"0 0 24 24\"><path d=\"M9 20V8h6v12M3 20v-7h6M15 20v-9h6v9M2 20h20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-stats\" viewBox=\"0 0 24 24\"><path d=\"M4 20V10M10 20V4M16 20v-8M22 20H2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" transform=\"translate(-1 0)\"></path></symbol> <symbol id=\"i-user\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"></circle><path d=\"M4 21c.8-4 4-6 8-6s7.2 2 8 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"></path></symbol> <symbol id=\"i-admin\" viewBox=\"0 0 24 24\"><path d=\"M12 3 5 6v5c0 4.4 2.9 8 7 10 4.1-2 7-5.6 7-10V6l-7-3Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-close\" viewBox=\"0 0 24 24\"><path d=\"M6 6l12 12M18 6 6 18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"></path></symbol> <symbol id=\"i-backspace\" viewBox=\"0 0 24 24\"><path d=\"M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7 6-7Z M12 9l6 6M18 9l-6 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-share\" viewBox=\"0 0 24 24\"><path d=\"M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></symbol> <symbol id=\"i-alert\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"></circle><path d=\"M12 7.5v5.5M12 16.5v.01\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"></path></symbol></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
